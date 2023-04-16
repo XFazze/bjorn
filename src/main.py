@@ -6,10 +6,13 @@ import discord
 from discord.ext import commands
 from cogwatch import Watcher
 import logging
-
-discord.utils.setup_logging(level=logging.INFO, root=False)
-
 load_dotenv()
+if os.getenv("DEV") == "TRUE":
+    discord.utils.setup_logging(level=logging.INFO, root=False)
+else:
+    handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')   
+    discord.utils.setup_logging(level=logging.INFO, root=False, handler=handler)
+    
 bot = commands.Bot(intents=discord.Intents.all(), command_prefix="¤")
 
 
