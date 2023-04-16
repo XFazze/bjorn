@@ -72,7 +72,7 @@ class leagueCustoms(commands.Cog):
         
         
 
-        game_result = discord.ui.View()
+        game_result = discord.ui.View(timeout=None)
         
         async def win_callback(interaction):
             if interaction.user == ctx.author:
