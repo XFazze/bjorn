@@ -13,7 +13,7 @@ class betterVC(commands.Cog):
     def cog_unload(self):
         self.hideChannels.cancel()
 
-    @tasks.loop(seconds=5.0)
+    @tasks.loop(seconds=60.0)
     async def hideChannels(self):
         try:
             guild_object = self.bot.get_guild(802298523214938153)

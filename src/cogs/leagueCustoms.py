@@ -3,6 +3,7 @@ import discord
 import sqlite3
 from numpy import log
 import datetime
+import os
 
 
 class leagueCustoms(commands.Cog):
@@ -24,7 +25,7 @@ class leagueCustoms(commands.Cog):
         #     print(player, player.name)
         print("in custom teams")
 
-        dbcon = sqlite3.connect("data.db")
+        dbcon = sqlite3.connect(os.getenv("DB"))
         dbcur = dbcon.cursor()
         res = dbcur.execute("CREATE TABLE IF NOT EXISTS players(discord_id, rating, timestamp)")
         # print("res of creatint", res.fetchone())
@@ -72,7 +73,7 @@ class leagueCustoms(commands.Cog):
         
         
 
-        game_result = discord.ui.View(timeout=None)
+        game_result = discord.ui.View(timeout=7200) # 2 hours
         
         async def win_callback(interaction):
             if interaction.user == ctx.author:
@@ -80,61 +81,54 @@ class leagueCustoms(commands.Cog):
                     embed.title = "Teams discarded"
                     await interaction.response.edit_message(embed=embed, view=None)
                     return
-                try:
-                    #print("p", team_right)
-                    mmr_diff=abs(sum([int(p[1]) for p in team_left]) -sum([int(p[1]) for p in team_right]))
-                    mmr_diff_maxed = max(min(abs(mmr_diff), 100)/100,10)  # 0 to 1
-                    mmr_diff_powed = mmr_diff_maxed**2     
-                    mmr_diff_scaled = 1+ mmr_diff_powed * 1 if mmr_diff == 0 else mmr_diff/abs(mmr_diff) # 0 to 2. over 1 when left is higher mmr
-                    print("mmr diff scaled")
-                except Exception as e:
-                    print("error", e)
+                
+                #print("p", team_right)
+                mmr_diff=abs(sum([int(float(p[1])) for p in team_left]) - sum([int(float(p[1])) for p in team_right]))
+                mmr_diff_maxed = max(min(abs(mmr_diff), 100),10)/100  # 0.1 to 1
+                mmr_diff_powed = mmr_diff_maxed**2                   # 0.01 to 1 
+                mmr_diff_scaled = 1+(0 if mmr_diff == 0 else (mmr_diff/abs(mmr_diff))*mmr_diff_powed) # 0 to 2. over 1 when left is higher mmr
+                print("mmr diff scaled", mmr_diff_scaled)
+            
                 print("PHASE 1 DONE")
                     
                     
-                try:
-                    dbcon = sqlite3.connect("data.db")
-                    dbcur = dbcon.cursor()
-                    
-                    updated_players = []
-                    for left_player in team_left:
-                        res = dbcur.execute(f"SELECT discord_id, rating FROM players WHERE discord_id='{left_player[0]}' ORDER BY timestamp DESC LIMIT 1")
-                        player =list( res.fetchone())
-                        player[1] = float(player[1])
-                        player[1] +=  10*(2-mmr_diff_scaled) if interaction.data['custom_id']== "Left" else -10*mmr_diff_scaled
-                        player[1] = str(player[1])
-                        
-                        updated_players.append(player)
-                    
-                    for right_player in team_right:
-                        res = dbcur.execute(f"SELECT discord_id, rating FROM players WHERE discord_id='{right_player[0]}' ORDER BY timestamp DESC LIMIT 1")
-                        player =list( res.fetchone())
-
-                        
-                        player[1] = float(player[1])
-                        player[1] +=  -10 * (2-mmr_diff_scaled) if interaction.data['custom_id']== "Left" else 10*mmr_diff_scaled
-                        player[1] = str(player[1])
-                        updated_players.append(player)
-                        
-                except Exception as e:
-                    print("error", e)
-                print("PHASE 2 DONE")
                 
-                try:
-                    for player in updated_players:
-                        print("new palyer mmr", player)
-                        player.append( datetime.datetime.now())
-                        
-                    dbcur.executemany('INSERT INTO players VALUES(?, ?, ?)',updated_players)
-                    dbcon.commit()            
-                    dbcon.close()
-                    embed.title = f"{interaction.data['custom_id']} Team Winner & mmr updtaed"
-                    await interaction.response.edit_message(embed=embed, view=None)
+                dbcon = sqlite3.connect(os.getenv("DB"))
+                dbcur = dbcon.cursor()
+                
+                updated_players = []
+                for left_player in team_left:
+                    res = dbcur.execute(f"SELECT discord_id, rating FROM players WHERE discord_id='{left_player[0]}' ORDER BY timestamp DESC LIMIT 1")
+                    player =list( res.fetchone())
+                    player[1] = float(player[1])
+                    player[1] +=  10*(2-mmr_diff_scaled) if interaction.data['custom_id']== "Left" else -10*mmr_diff_scaled
+                    player[1] = str(player[1])
                     
-                except Exception as e:
-                    print("error", e)
-                print("PHASE 3 DONE")
+                    updated_players.append(player)
+                
+                for right_player in team_right:
+                    res = dbcur.execute(f"SELECT discord_id, rating FROM players WHERE discord_id='{right_player[0]}' ORDER BY timestamp DESC LIMIT 1")
+                    player =list( res.fetchone())
+
                     
+                    player[1] = float(player[1])
+                    player[1] +=  -10 * (2-mmr_diff_scaled) if interaction.data['custom_id']== "Left" else 10*mmr_diff_scaled
+                    player[1] = str(player[1])
+                    updated_players.append(player)
+                    
+            
+                for player in updated_players:
+                    print("new palyer mmr", player)
+                    player.append( datetime.datetime.now())
+                    
+                dbcur.executemany('INSERT INTO players VALUES(?, ?, ?)',updated_players)
+                dbcon.commit()            
+                dbcon.close()
+                embed.title = f"{interaction.data['custom_id']} Team Winner & mmr updtaed"
+                await interaction.response.edit_message(embed=embed, view=None)
+                
+            
+                
 
         
         left_win = discord.ui.Button(label="Left Win", style=discord.ButtonStyle.green,custom_id="Left" )
