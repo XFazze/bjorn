@@ -1,7 +1,6 @@
 from discord.ext import commands
 import discord
 import sqlite3
-from numpy import log
 import datetime
 import os
 
@@ -11,15 +10,20 @@ class leagueCustoms(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def customTeams(self, ctx, *additional_players: discord.Member):
-        if ctx.author.id != 243022798543519745:
+    async def leagueCustoms(self, ctx, *additional_players: discord.Member):
+        # admin role id 802299956299169845
+        if 802299956299169845 not in [role.id for role  in ctx.author.roles]:
+            print("Not an admin")
             return
+        
         players = ctx.author.voice.channel.members
         for player in additional_players:
             if player not in players:
                 # print("added pale", player.name)
                 players.append(player)
-
+            elif player in players:
+                players.remove(player)
+            
         # print("players:")
         # for player in players:
         #     print(player, player.name)

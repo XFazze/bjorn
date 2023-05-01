@@ -13,7 +13,7 @@ else:
     handler = logging.FileHandler(filename='data/discord.log', encoding='utf-8', mode='w')   
     discord.utils.setup_logging(level=logging.INFO, root=False, handler=handler)
     
-bot = commands.Bot(intents=discord.Intents.all(), command_prefix="¤")
+bot = commands.Bot(intents=discord.Intents.all(), command_prefix=os.getenv("PREFIX") if os.getenv("PREFIX") else "¤")
 
 
 @bot.event
@@ -36,7 +36,9 @@ async def main():
         await bot.load_extension("cogs.betterVC")
         await bot.load_extension("cogs.autoPublic")
         await bot.load_extension("cogs.leagueCustoms")  
-
+    else:
+        await bot.load_extension("cogs.leagueCustoms")  
+    
     # await bot.load_extension("cogs.dev")
     async with bot:
         await bot.start(os.getenv("TOKEN"))
