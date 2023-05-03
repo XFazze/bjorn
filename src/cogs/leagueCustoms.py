@@ -72,10 +72,13 @@ class leagueCustoms(commands.Cog):
         random.shuffle(team_left)
         random.shuffle(team_right)
         team_left_Display = '\n'.join([self.bot.get_user(int(p[0])).name for p in  team_left])
-        embed.add_field(name=f"LEFT TEAM", value=team_left_Display)
+        winrate = int(( max((sum([float(p[1]) for p in team_left])),sum([float(p[1]) for p in team_right])) / (sum([float(p[1]) for p in team_left]) + sum([float(p[1]) for p in team_right])))*100)+1
+        if winrate > 100:
+            winrate = 99
+        embed.add_field(name=f"LEFT TEAM {winrate}%", value=team_left_Display)
         
         team_right_Display = '\n'.join([self.bot.get_user(int(p[0])).name for p in  team_right])
-        embed.add_field(name=f"RIGTH TEAM", value=team_right_Display)
+        embed.add_field(name=f"RIGTH TEAM {100-winrate}%", value=team_right_Display)
         
         
 
