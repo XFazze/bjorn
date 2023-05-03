@@ -100,7 +100,7 @@ celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
-
+leaguecustomData02.sqlite
 # Environments
 .env
 .venv
