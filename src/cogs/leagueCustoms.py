@@ -235,7 +235,8 @@ class leagueCustoms(commands.Cog):
         embed = discord.Embed(
             title="Teams",  color=0x00FF42
         )
-        
+        random.shuffle(team_left)
+        random.shuffle(team_right)
         team_left_Display = '\n'.join([self.bot.get_user(int(p[0])).name for p in  team_left])
         embed.add_field(name=f"LEFT TEAM", value=team_left_Display)
         
