@@ -35,11 +35,19 @@ class friend(commands.Cog):
     async def friend(self, ctx):
         with open('invites.json', "r") as f:
             inviters =  json.loads(f.read())
-        
-        await ctx.reply(
-            embed=discord.Embed(
-                title=f"{inviters}", color=0x00FF42
-            )
-        )
+        invites = await self.bot.get_guild(802298523214938153).invites()
+        res = []
+        tes = []
+        for i in range(len(inviters)):
+            res.append(list(inviters.keys())[i])
+            print(list(inviters.keys())[i])
+            tes.append(inviters[str(list(inviters.keys())[i])])
+            print(inviters[str(list(inviters.keys())[i])])
+        embed = discord.Embed(title=(f"Invites"), color=0x00FF42)
+        print(tes)
+        for i in range(len(inviters.keys())):
+            embed.add_field(name=f"{res[i]}", value='\n'.join(tes[i]))
+        await ctx.reply(embed=embed)
+
 async def setup(bot):
     await bot.add_cog(friend(bot))
