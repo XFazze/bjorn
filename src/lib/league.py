@@ -54,6 +54,8 @@ class Player:
         self.mmr = existing_player[1] if existing_player else 1000
         self.wins = existing_player[2] if existing_player else 0
         self.losses = existing_player[3] if existing_player else 0
+        self.win_rate = self.wins / (self.wins + self.losses) * \
+            100 if self.wins + self.losses > 0 else 0
         self.matches = self.db.get_matches(discord_id) if get_matches else []
 
         if not existing_player:
@@ -119,6 +121,10 @@ class Database:
 
                 matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
         return matches
+
+    def get_all_players(self):
+        res = self.cursor.execute(f"SELECT discord_id FROM player").fetchall()
+        return [Player(self.bot, i[0]) for i in res]
 
     def insert_match(self, match: Match):
         team1_string = "".join(
@@ -213,37 +219,64 @@ class MatchEmbed(discord.Embed):
 
 
 class MatchView(discord.ui.View):
-    def __init__(self, match: CustomMatch):
+    def __init__(self, match: CustomMatch, base_embed: discord.Embed):
         super().__init__(timeout=7200)
 
-        buttons = [
+        self.current_embed = None
+        self.base_embed = base_embed
+
+        self.buttons = [
             discord.ui.Button(
                 label="Left Win", style=discord.ButtonStyle.green, custom_id="left"),
             discord.ui.Button(
                 label="Right Win", style=discord.ButtonStyle.green, custom_id="right"),
             discord.ui.Button(
-                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=1)
+                label="Players", style=discord.ButtonStyle.blurple, custom_id="players", row=1),
+            discord.ui.Button(
+                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=2)
         ]
 
         async def win_callback(interaction: discord.Interaction):
+            self.current_embed = interaction.message.embeds[0]
+            if interaction.data["custom_id"] == "players":
+                if self.current_embed.title == "Players":
+                    embed = base_embed
+                    self.buttons[2].label = "Players"
+                else:
+                    players = [i for i in match.db.get_all_players(
+                    ) if i.discord_id in [i.discord_id for i in match.team1 + match.team2]]
+
+                    embed = discord.Embed(title=f"Players", color=0x228888)
+                    embed.add_field(name="Name", value="\n".join(
+                        [p.discord_name for p in players]))
+                    embed.add_field(name="Win rate", value="\n".join(
+                        [f"{p.win_rate:.1f}%" for p in players]))
+                    embed.add_field(name="Matches", value="\n".join(
+                        [f"{len(p.matches)}" for p in players]))
+
+                    self.buttons[2].label = "Teams"
+
+                await interaction.message.edit(embed=embed, view=self)
+                await interaction.response.defer()
+                return
+
             if interaction.user != match.creator:
                 return
 
             if interaction.data["custom_id"] == "discard":
-                interaction.message.embeds[0].title = "Match Discarded"
-                interaction.message.embeds[0].color = 0xFF0000
-                await interaction.message.edit(embed=interaction.message.embeds[0], view=None)
+                self.current_embed.title = "Match Discarded"
+                self.current_embed.color = 0xFF0000
+                await interaction.message.edit(embed=self.current_embed, view=None)
                 return
-
-            if interaction.data["custom_id"] == "left":
+            elif interaction.data["custom_id"] == "left":
                 match.finish_match(1)
             elif interaction.data["custom_id"] == "right":
                 match.finish_match(2)
 
-            interaction.message.embeds[0].title = f"Winner: {'Left' if interaction.data['custom_id'] == 'left' else 'Right'} Team"
-            await interaction.message.edit(embed=interaction.message.embeds[0], view=None)
+            self.current_embed.title = f"Winner: {'Left' if interaction.data['custom_id'] == 'left' else 'Right'} Team"
+            await interaction.message.edit(embed=self.current_embed, view=None)
 
-        for button in buttons:
+        for button in self.buttons:
             button.callback = win_callback
             self.add_item(button)
 

@@ -38,9 +38,9 @@ async def main():
         await bot.load_extension("cogs.info")
         await bot.load_extension("cogs.betterVC")
         await bot.load_extension("cogs.autoPublic")
-        await bot.load_extension("cogs.leagueCustoms")
+        await bot.load_extension("cogs.league")
     else:
-        await bot.load_extension("cogs.leagueCustoms")
+        await bot.load_extension("cogs.league")
 
     # await bot.load_extension("cogs.dev")
     async with bot:
