@@ -21,10 +21,10 @@ class friend(commands.Cog):
         for i in invites:
 
             if i.inviter.name not in inviters.keys():
-                inviters[i.inviter.name] = []
+                inviters[i.inviter.id] = []
             
-            if len(inviters[i.inviter.name]) < i.uses:
-                inviters[i.inviter.name].append(member.name)
+            if len(inviters[i.inviter.id]) < i.uses:
+                inviters[i.inviter.id].append(str(member.id))
 
                 os.remove('invites.json')
                 with open('invites.json', "w+") as f:
@@ -38,13 +38,19 @@ class friend(commands.Cog):
         invites = await self.bot.get_guild(802298523214938153).invites()
         res = []
         tes = []
+        
+        #self.bot.get_user(int())
+        #id = int(list(inviters.keys())[0])
+        #print(id)
+        #print(self.bot.get_user(id))
+        ids = list(inviters.keys())
         for i in range(len(inviters)):
-            res.append(list(inviters.keys())[i])
-            print(list(inviters.keys())[i])
-            tes.append(inviters[str(list(inviters.keys())[i])])
-            print(inviters[str(list(inviters.keys())[i])])
+            idn = int(ids[i])
+            print(idn)
+            print(self.bot.get_user(idn))
+            res.append(list(self.bot.get_user(idn)))
+            tes.append(inviters[str(list(self.bot.get_user(idn)))])
         embed = discord.Embed(title=(f"Invites"), color=0x00FF42)
-        print(tes)
         for i in range(len(inviters.keys())):
             embed.add_field(name=f"{res[i]}", value='\n'.join(tes[i]))
         await ctx.reply(embed=embed)

@@ -9,6 +9,56 @@ import random
 class leagueCustoms(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+    @commands.command()
+    async def chance(self, ctx, *additional_players: discord.Member):
+        # admin role id 802299956299169845
+        if 802299956299169845 not in [role.id for role  in ctx.author.roles]:
+            return
+        
+        players = ctx.author.voice.channel.members
+        for player in additional_players:
+            if player not in players:
+                # print("added pale", player.name)
+                players.append(player)
+            elif player in players:
+                players.remove(player)
+
+        dbcon = sqlite3.connect(os.getenv("DB"))
+        dbcur = dbcon.cursor()
+        res = dbcur.execute("CREATE TABLE IF NOT EXISTS players(discord_id, rating, timestamp)")
+        
+        # Create players if not existsing
+        formatted_players = []
+        new_players = []
+        for player in players:
+            res = dbcur.execute(f"SELECT discord_id, rating FROM players WHERE discord_id='{player.id}' ORDER BY timestamp DESC LIMIT 1")
+            pla = res.fetchone()
+            if not pla:
+                pla = (str(player.id), str(1000),datetime.datetime.now() )
+                new_players.append(pla)
+            formatted_players.append(pla)
+        dbcur.executemany('INSERT  INTO players VALUES(?, ?, ?) ',new_players)
+        dbcon.commit()
+        dbcon.close()
+        
+        formatted_players.sort(key=lambda a:float(a[1]))
+        team_left = []
+        team_right = []
+        while len(formatted_players) != 0:
+            if sum([float(p[1]) for p in team_left]) > sum([float(p[1]) for p in team_right]):
+                team_right.append(formatted_players.pop())
+            else:
+                team_left.append(formatted_players.pop())
+        embed = discord.Embed(
+            title="",  color=0x00FF42
+        )
+        winrate = int(( max((sum([float(p[1]) for p in team_left])),sum([float(p[1]) for p in team_right])) / (sum([float(p[1]) for p in team_left]) + sum([float(p[1]) for p in team_right])))*100)+1
+        if winrate > 100:
+            winrate = 99
+        embed.add_field(name=f"LEFT TEAM {100-winrate}%", value="")
+        embed.add_field(name=f"RIGTH TEAM {winrate}%", value="")
+        
+        await ctx.reply(embed=embed)
 
     @commands.command()
     async def leagueCustoms(self, ctx, *additional_players: discord.Member):
@@ -71,14 +121,14 @@ class leagueCustoms(commands.Cog):
         )
         random.shuffle(team_left)
         random.shuffle(team_right)
-        team_left_Display = '\n'.join([self.bot.get_user(int(p[0])).name for p in  team_left])
         winrate = int(( max((sum([float(p[1]) for p in team_left])),sum([float(p[1]) for p in team_right])) / (sum([float(p[1]) for p in team_left]) + sum([float(p[1]) for p in team_right])))*100)+1
         if winrate > 100:
             winrate = 99
-        embed.add_field(name=f"LEFT TEAM {winrate}%", value=team_left_Display)
+        team_left_Display = '\n'.join([self.bot.get_user(int(p[0])).name for p in  team_left])
+        embed.add_field(name=f"LEFT TEAM", value=team_left_Display)
         
         team_right_Display = '\n'.join([self.bot.get_user(int(p[0])).name for p in  team_right])
-        embed.add_field(name=f"RIGTH TEAM {100-winrate}%", value=team_right_Display)
+        embed.add_field(name=f"RIGTH TEAM", value=team_right_Display)
         
         
 
