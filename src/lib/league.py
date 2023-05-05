@@ -112,9 +112,9 @@ class Database:
                 team1 = []
                 team2 = []
 
-                team1 = [Player(self.bot, int(i), False)
+                team1 = [Player(self.bot, int(i), get_matches=False)
                          for i in i[1].split(" ")[0:-1]]
-                team2 = [Player(self.bot, int(i), False)
+                team2 = [Player(self.bot, int(i), get_matches=False)
                          for i in i[2].split(" ")[0:-1]]
 
                 matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
@@ -179,20 +179,21 @@ class CustomMatch:
     def finish_match(self, winner: int):
         if winner == 1:
             for player in self.team1:
-                player.mmr += 10 * (2 - self.mmr_diff_scaled)
+                player.mmr += 10 * self.mmr_diff_scaled
                 player.wins += 1
 
             for player in self.team2:
-                player.mmr += 10 * self.mmr_diff_scaled
+                player.mmr -= 10 * self.mmr_diff_scaled
                 player.losses += 1
 
         elif winner == 2:
+
             for player in self.team1:
-                player.mmr += 10 * self.mmr_diff_scaled
+                player.mmr -= 10 * self.mmr_diff_scaled
                 player.losses += 1
 
             for player in self.team2:
-                player.mmr += 10 * (2 - self.mmr_diff_scaled)
+                player.mmr += 10 * self.mmr_diff_scaled
                 player.wins += 1
 
         [player.update() for player in self.team1 + self.team2]
