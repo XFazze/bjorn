@@ -38,11 +38,6 @@ class friend(commands.Cog):
         invites = await self.bot.get_guild(802298523214938153).invites()
         res = []
         tes = []
-        
-        #self.bot.get_user(int())
-        #id = int(list(inviters.keys())[0])
-        #print(id)
-        #print(self.bot.get_user(id))
         ids = list(inviters.keys())
         for i in range(len(inviters)):
             idn = int(ids[i])
