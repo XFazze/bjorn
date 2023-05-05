@@ -8,7 +8,7 @@ import numpy as np
 import random
 
 import lib.persmissions as permissions
-from lib.league import Database, Player, CustomMatch, Tournament, CustomMatch, generate_teams, MatchEmbed, MatchView
+from lib.league import Database, Player, CustomMatch, Tournament, CustomMatch, generate_teams, MatchEmbed, MatchView, ranks_mmr
 
 
 class leagueCustoms(commands.Cog):
@@ -35,6 +35,26 @@ class leagueCustoms(commands.Cog):
         view = MatchView(custom_match)
 
         await ctx.reply(embed=embed, view=view)
+
+    @commands.command()
+    @permissions.admin()
+    async def setmmr(self, ctx: commands.Context, member: discord.Member, mmr: int):
+        player = Player(self.bot, member.id)
+        player.mmr = mmr
+        player.update()
+        await ctx.reply(f"{member.mention}'s mmr has been set to {mmr}")
+
+    @commands.command()
+    @permissions.admin()
+    async def setrank(self, ctx: commands.Context, member: discord.Member, rank: str):
+        if rank not in ranks_mmr.keys():
+            await ctx.reply(f"Invalid rank! Available ranks: {ranks_mmr.keys()}")
+            return
+
+        player = Player(self.bot, member.id)
+        player.mmr = ranks_mmr[rank]
+        player.update()
+        await ctx.reply(f"{member.mention}'s mmr has been set to {rank}: {ranks_mmr[rank]}")
 
 
 async def setup(bot):
