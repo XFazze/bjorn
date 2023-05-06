@@ -1,8 +1,9 @@
 from discord.ext import commands
 import discord
+from typing import Optional, List, Union, Literal
 
 import lib.persmissions as permissions
-from lib.league import Database, Player, CustomMatch, Tournament, CustomMatch, generate_teams, MatchEmbed, MatchView, ranks_mmr
+from lib.league import Database, Player, CustomMatch, Tournament, CustomMatch, generate_teams, MatchEmbed, MatchView, ranks_mmr, ranks_type, QueueView, QueueEmbed, PlayerMatchesView, Match
 
 
 class league(commands.Cog):
@@ -10,25 +11,28 @@ class league(commands.Cog):
         self.bot = bot
         self.db = Database(bot, "data/data.sqlite")
 
-    @commands.group(invoke_without_command=True)
-    async def league(self, ctx: commands.Context):
-        await ctx.reply(embed=discord.Embed(title=f"Invalid league command! Try '{ctx.prefix}help league'", color=0xFF0000))
+    @commands.hybrid_group(name="league", description="League commands")
+    async def league(self, ctx: commands.Context): pass
 
-    @league.command(description="Creates a league custom match instance with teams from the current voice channel.")
+    @league.command(name="customs", description="Creates a league custom match instance with teams from the current voice channel.")
     @permissions.admin()
     @permissions.voice()
-    async def customs(self, ctx: commands.Context, *additional_players: discord.Member):
+    async def customs(self, ctx: commands.Context, add_player_1: Optional[discord.Member], add_player_2: Optional[discord.Member], add_player_3: Optional[discord.Member], add_player_4: Optional[discord.Member], add_player_5: Optional[discord.Member], add_player_6: Optional[discord.Member], add_player_7: Optional[discord.Member], add_player_8: Optional[discord.Member], ):
         member_players = ctx.author.voice.channel.members
 
-        if len(member_players) < 2:
-            await ctx.reply(embed=discord.Embed(title=f"Not enough players in voice channel!", color=0xFF0000))
-            return
+        additional_players = [add_player_1, add_player_2, add_player_3,
+                              add_player_4, add_player_5, add_player_6, add_player_7, add_player_8]
+        additional_players = [i for i in additional_players if i is not None]
 
         for player in additional_players:
             if player not in member_players:
                 member_players.append(player)
             elif player in players:
                 member_players.remove(player)
+
+        if len(member_players) < 2:
+            await ctx.reply(embed=discord.Embed(title=f"Not enough players in voice channel!", color=0xFF0000))
+            return
 
         players = [Player(self.bot, i.id)
                    for i in member_players]
@@ -40,31 +44,27 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed, view=view)
 
-    @league.command(description=f"Sets a player's mmr to a given value.")
+    @league.command(name="queue", description="Creates a customs queue to automatically be placed in fair teams")
+    async def queue(self, ctx: commands.Context):
+        embed = QueueEmbed([])
+        view = QueueView(self.bot)
+        await ctx.reply(embed=embed, view=view)
+
+    @league.command(name="setrank", description=f"Sets a player's rank to a given rank or mmr")
     @permissions.admin()
-    async def setmmr(self, ctx: commands.Context, member: discord.Member, mmr: int):
+    async def setrank(self, ctx: commands.Context, member: discord.Member, rank: Optional[ranks_type], mmr: Optional[int]):
+        if rank is not None:
+            mmr = ranks_mmr[rank]
+        elif mmr is not None:
+            mmr = int(mmr)
+
         player = Player(self.bot, member.id)
         player.mmr = mmr
         player.update()
-        await ctx.reply(embed=discord.Embed(title=f"{member.name}'s mmr has been set to {mmr}", color=0x00FF42))
 
-    @league.command(description=f"Sets a player's rank to a given rank. Available ranks: {ranks_mmr.keys()}.")
-    @permissions.admin()
-    async def setrank(self, ctx: commands.Context, member: discord.Member, rank: str):
-        if rank not in ranks_mmr.keys():
-            embed = discord.Embed(title=f"Invalid rank!", color=0xFF0000)
-            embed.add_field(name="Available ranks:",
-                            value="\n".join(ranks_mmr.keys()))
-            await ctx.reply(embed=embed)
-            return
+        await ctx.reply(embed=discord.Embed(title=f"{member.name}'s mmr has been set to {rank if rank is not None else mmr}: {mmr}", color=0x00FF42))
 
-        player = Player(self.bot, member.id)
-        player.mmr = ranks_mmr[rank]
-        player.update()
-
-        await ctx.reply(embed=discord.Embed(title=f"{member.name}'s mmr has been set to {rank}: {ranks_mmr[rank]}", color=0x00FF42))
-
-    @league.command(description=f"Displays all players.")
+    @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
 
@@ -77,6 +77,49 @@ class league(commands.Cog):
             [f"{len(p.matches)}" for p in players]))
 
         await ctx.reply(embed=embed)
+
+    @league.group(name="player", description=f"Different player commands.")
+    async def player(self, ctx: commands.Context):
+        await ctx.reply(embed=discord.Embed(title=f"Invalid player command! Try '{ctx.prefix}help league player'", color=0xFF0000))
+
+    @player.command(name="remove", description=f"Removes a player record from the database.")
+    @permissions.admin()
+    async def remove(self, ctx: commands.Context, member: discord.Member):
+        self.db.remove_player(member)
+        await ctx.reply(embed=discord.Embed(title=f"{member.name}'s record has been removed from the database", color=0x00FF42))
+
+    @league.command(name="matches", description=f"Displays a players matches")
+    async def matches(self, ctx: commands.Context, member: Optional[discord.Member]):
+        player = Player(self.bot, member.id) if member else None
+        embeds = []
+        matches = player.matches if player else self.db.get_all_matches()
+
+        for i, match in enumerate(matches):
+            match: Match
+            if player:
+                embed = discord.Embed(
+                    title=f"{player.discord_name}\t({i+1}/{len(matches)})", color=0x00FF42)
+            else:
+                embed = discord.Embed(
+                    title=f"{match.match_id}\t({i+1}/{len(matches)})", color=0x00FF42)
+
+            embed.add_field(name=f"Team 1", value=f"\n".join(
+                [f"{p.discord_name}" for p in match.team1]))
+            embed.add_field(name=f"Team 2", value=f"\n".join(
+                [f"{p.discord_name}" for p in match.team2]))
+            embed.add_field(
+                name=f"Date", value=f"{match.timestamp[:10]}", inline=False)
+            embed.add_field(
+                name=f"Result", value=f"Team {match.winner}")
+            embeds.append(embed)
+
+        if not embeds:
+            await ctx.reply(embed=discord.Embed(title=f"{member.name} has no matches!", color=0xFF0000))
+            return
+
+        view = PlayerMatchesView(embeds)
+
+        await ctx.reply(embed=embeds[0], view=view)
 
 
 async def setup(bot):
