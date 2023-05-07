@@ -5,6 +5,8 @@ import discord
 from discord.ext import commands
 from typing import Optional, Literal
 
+import lib.general as general
+
 
 ranks_mmr = {
     "Iron 4": 500,
@@ -46,7 +48,7 @@ class Tournament:
 
 class Player:
     def __init__(self, bot, discord_id: int, get_matches=True):
-        self.db = Database(bot, "data/data.sqlite")
+        self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
 
         existing_player = self.db.cursor.execute(
@@ -91,21 +93,33 @@ class Match:
         self.timestamp = timestamp
 
 
-class Database:
+class Database(general.Database):
     def __init__(self, bot, db_name):
-        self.connection = sqlite3.connect(db_name)
-        self.cursor = self.connection.cursor()
+        super().__init__(db_name)
+        self.create_tables(
+            {
+                "player": [
+                    "discord_id",
+                    "mmr",
+                    "wins",
+                    "losses"
+                ],
+                "match": [
+                    "match_id",
+                    "team1",
+                    "team2",
+                    "winner",
+                    "mmr_diff",
+                    "timestamp"
+                ],
+                "mmr_history": [
+                    "discord_id",
+                    "mmr",
+                    "timestamp"
+                ]
+            }
+        )
         self.bot = bot
-
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS player(discord_id, mmr, wins, losses)"
-        )
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS match(match_id, team1, team2, winner, mmr_diff, timestamp)"
-        )
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS mmr_history(discord_id, mmr, timestamp)"
-        )
 
     def get_all_matches(self):
         res = self.cursor.execute(
@@ -173,7 +187,7 @@ class Database:
 
 class CustomMatch:
     def __init__(self, bot, creator: discord.Member, team1: list[Player], team2: list[Player]):
-        self.db = Database(bot, "data/data.sqlite")
+        self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
         self.creator = creator
         self.team1 = team1
@@ -322,7 +336,7 @@ class QueueEmbed(discord.Embed):
 class QueueView(discord.ui.View):
     def __init__(self, bot):
         super().__init__(timeout=10800)  # I think 3 hours
-        self.db = Database(bot, "data/data.sqlite")
+        self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
 
         self.buttons = [
