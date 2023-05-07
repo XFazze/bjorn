@@ -165,6 +165,11 @@ class Database:
             f"DELETE FROM player WHERE discord_id = {player.id}")
         self.connection.commit()
 
+    def remove_match(self, match_id: int):
+        self.cursor.execute(
+            f"DELETE FROM match WHERE match_id = {match_id}")
+        self.connection.commit()
+
 
 class CustomMatch:
     def __init__(self, bot, creator: discord.Member, team1: list[Player], team2: list[Player]):
