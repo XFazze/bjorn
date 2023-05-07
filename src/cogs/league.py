@@ -9,7 +9,7 @@ from lib.league import Database, Player, CustomMatch, Tournament, CustomMatch, g
 class league(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.db = Database(bot, "data/data.sqlite")
+        self.db = Database(bot, "data/league.sqlite")
 
     @commands.hybrid_group(name="league", description="League commands")
     async def league(self, ctx: commands.Context): pass
@@ -98,6 +98,10 @@ class league(commands.Cog):
         player = Player(self.bot, member.id) if member else None
         embeds = []
         matches = player.matches if player else self.db.get_all_matches()
+
+        if len(matches) == 0:
+            await ctx.reply(embed=discord.Embed(title=f"No matches found", color=0xFF0000))
+            return
 
         for i, match in enumerate(matches):
             match: Match
