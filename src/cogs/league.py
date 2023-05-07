@@ -78,15 +78,20 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @league.group(name="player", description=f"Different player commands.")
-    async def player(self, ctx: commands.Context):
-        await ctx.reply(embed=discord.Embed(title=f"Invalid player command! Try '{ctx.prefix}help league player'", color=0xFF0000))
+    @league.group(name="remove", description=f"Remove commands")
+    async def remove(self, ctx: commands.Context): pass
 
-    @player.command(name="remove", description=f"Removes a player record from the database.")
+    @remove.command(name="player", description=f"Removes a player record from the database.")
     @permissions.admin()
-    async def remove(self, ctx: commands.Context, member: discord.Member):
+    async def player(self, ctx: commands.Context, member: discord.Member):
         self.db.remove_player(member)
         await ctx.reply(embed=discord.Embed(title=f"{member.name}'s record has been removed from the database", color=0x00FF42))
+
+    @remove.command(name="match", description=f"Removes a match record from the database.")
+    @permissions.admin()
+    async def match(self, ctx: commands.Context, match_id: int):
+        self.db.remove_match(match_id)
+        await ctx.reply(embed=discord.Embed(title=f"Match {match_id} has been removed from the database", color=0x00FF42))
 
     @league.command(name="matches", description=f"Displays a players matches")
     async def matches(self, ctx: commands.Context, member: Optional[discord.Member]):
