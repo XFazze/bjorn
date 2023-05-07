@@ -9,7 +9,10 @@ class info(commands.Cog):
         self.bot = bot
         self.start_time = datetime.now()
 
-    @commands.command()
+    @commands.hybrid_group(name="info", description="Information commands")
+    async def info(self, ctx): pass
+
+    @info.command(name="ping", description="Returns the latency of the bot")
     async def ping(self, ctx):
         await ctx.reply(
             embed=discord.Embed(
@@ -17,18 +20,17 @@ class info(commands.Cog):
             )
         )
 
-    @commands.command()
+    @info.command(name="uptime", description="Returns the uptime of the bot")
     async def uptime(self, ctx):
         time_difference = datetime.now() - self.start_time
-        print(type(time_difference))
         await ctx.reply(
             embed=discord.Embed(
                 title=f"Uptime is {str(time_difference).split('.')[0]}", color=0x00FF42
             )
         )
 
-    @commands.command(description="Returns information about the bot")
-    async def infoBot(self, ctx):
+    @info.command(name="bot", description="Returns information about the bot")
+    async def bot(self, ctx):
         bot = await self.bot.application_info()
         embed = discord.Embed(
             title=bot.name, description=self.bot.description, color=0x00FF42
@@ -39,7 +41,8 @@ class info(commands.Cog):
         embed.add_field(name="Users", value=len(self.bot.users))
         embed.add_field(name="Commands", value=len(self.bot.commands))
         embed.add_field(name="Emojis", value=len(self.bot.emojis))
-        embed.add_field(name="Latency", value=round(self.bot.latency * 1000, 1))
+        embed.add_field(name="Latency", value=round(
+            self.bot.latency * 1000, 1))
         embed.add_field(
             name="Source code", value="https://github.com/XFazze/bjorn", inline=False
         )
@@ -48,7 +51,7 @@ class info(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command(description="Returns all server invites")
+    @info.command(name="invites", description="Returns all server invites")
     async def invites(self, ctx):
         invites = await ctx.guild.invites()
         await ctx.reply(
@@ -59,8 +62,8 @@ class info(commands.Cog):
             )
         )
 
-    @commands.command(description="Returns information about the server")
-    async def infoServer(self, ctx):
+    @info.command(name="server", description="Returns information about the server")
+    async def server(self, ctx):
         embed = discord.Embed(
             title=ctx.guild.name, description=ctx.guild.description, color=0x00FF42
         )
@@ -69,19 +72,23 @@ class info(commands.Cog):
         embed.add_field(name="ID", value=ctx.guild.id)
         embed.add_field(name="Member count", value=ctx.guild.member_count)
         embed.add_field(name="Creation Date", value=ctx.guild.created_at)
-        embed.add_field(name="Text channels", value=len(ctx.guild.text_channels))
-        embed.add_field(name="Voice channels", value=len(ctx.guild.voice_channels))
-        embed.add_field(name="Number of categories", value=len(ctx.guild.categories))
+        embed.add_field(name="Text channels",
+                        value=len(ctx.guild.text_channels))
+        embed.add_field(name="Voice channels",
+                        value=len(ctx.guild.voice_channels))
+        embed.add_field(name="Number of categories",
+                        value=len(ctx.guild.categories))
         embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon)
         embed.set_image(url=ctx.guild.icon)
 
         await ctx.reply(embed=embed)
 
-    @commands.command(description="Returns information about the user")
-    async def infoUser(self, ctx, user: typing.Optional[discord.Member] = None):
+    @info.command(name="user", description="Returns information about the user")
+    async def user(self, ctx, user: typing.Optional[discord.Member]):
         if not user:
             user = ctx.message.author
-        embed = discord.Embed(title=user.name + user.discriminator, color=user.color)
+        embed = discord.Embed(
+            title=user.name + user.discriminator, color=user.color)
 
         embed.add_field(name="ID", value=user.id)
         embed.add_field(name="Nickname", value=user.nick)
@@ -97,7 +104,7 @@ class info(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command(desciption="Returns user profile picture")
+    @info.command(name="avatar", description="Returns user profile picture")
     async def avatar(self, ctx, user: typing.Optional[discord.Member] = None):
         if not user:
             user = ctx.message.author

@@ -14,3 +14,10 @@ def voice():
             await ctx.reply(embed=discord.Embed(title=f"You must be in a voice channel to use this command!", color=0xFF0000))
         return ctx.author.voice
     return commands.check(predicate)
+
+
+def remove_original():
+    async def predicate(ctx: commands.Context):
+        await ctx.message.delete(delay=1)
+        return True
+    return commands.check(predicate)

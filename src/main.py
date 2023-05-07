@@ -39,12 +39,13 @@ async def main():
         await bot.load_extension("cogs.betterVC")
         await bot.load_extension("cogs.autoPublic")
         await bot.load_extension("cogs.league")
+
     else:
         await bot.load_extension("cogs.league")
+        await bot.load_extension("cogs.dev")
+        await bot.load_extension("cogs.info")
 
-    # await bot.load_extension("cogs.dev")
-    async with bot:
-        await bot.start(os.getenv("TOKEN"))
+    await bot.start(os.getenv("TOKEN"))
 
 
 asyncio.run(main())
