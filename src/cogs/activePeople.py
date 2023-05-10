@@ -74,7 +74,7 @@ class activePeople(general.Bjorn_cog):
         
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        if after.channel is None or member.guild.id != self.loading_id or not member:
+        if after.channel is None or member.guild.id != self.loading_id or not member or member.bot:
             return
         try:
             print("on voice stat eupdate")
