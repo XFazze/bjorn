@@ -174,17 +174,6 @@ class Database(general.Database):
             f"INSERT INTO player (discord_id, mmr, wins, losses) VALUES ({player.discord_id}, {player.mmr}, {player.wins}, {player.losses})")
         self.connection.commit()
 
-    def remove_player(self, player: discord.Member):
-        self.cursor.execute(
-            f"DELETE FROM player WHERE discord_id = {player.id}")
-        self.connection.commit()
-
-    def remove_match(self, match_id: int):
-        self.cursor.execute(
-            f"DELETE FROM match WHERE match_id = {match_id}")
-        self.connection.commit()
-
-
 class CustomMatch:
     def __init__(self, bot, creator: discord.Member, team1: list[Player], team2: list[Player]):
         self.db = Database(bot, "data/league.sqlite")
@@ -193,26 +182,18 @@ class CustomMatch:
         self.team1 = team1
         self.team2 = team2
         self.winner = None
-        self.mmr_diff, self.mmr_diff_maxed, self.mmr_diff_powed, self.mmr_diff_scaled = self.calc_mmr_diff()
+        self.maximal, self.highest_mmr, self.lowest_mmr = self.calc_mmr_diff()
         self.timestamp = datetime.datetime.now()
         self.match_id = self.gen_match_id()
 
-    def calc_mmr_diff(self) -> list[int, int, int, int]:
-        mmr_diff = abs(sum(
-            [player.mmr for player in self.team1]) - sum([player.mmr for player in self.team2]))
-
-        # 0.1 to 1
-        mmr_diff_maxed = max(
-            min(abs(mmr_diff), 100), 10)/100
-
-        # 0.01 to 1
-        mmr_diff_powed = mmr_diff_maxed**2
-
-        # 0 to 2. over 1 when left is higher mmr
-        mmr_diff_scaled = 1 + \
-            (0 if mmr_diff == 0 else (mmr_diff/abs(mmr_diff))*mmr_diff_powed)
-
-        return [mmr_diff, mmr_diff_maxed, mmr_diff_powed, mmr_diff_scaled]
+    def calc_mmr_diff(self) -> list[int, int, int]:
+        maximal = max(sum([player.mmr for player in self.team1]),sum([player.mmr for player in self.team2]))
+        total = (sum([player.mmr for player in self.team1]) + sum([player.mmr for player in self.team2]))
+        winst = maximal/total
+        higest_mmr = (winst)*40
+        lowest_mmr = (1-winst)*40
+        
+        return [maximal, higest_mmr, lowest_mmr]
 
     def gen_match_id(self) -> int:
         res = self.db.cursor.execute("SELECT match_id FROM match")
@@ -225,29 +206,48 @@ class CustomMatch:
         return match_id
 
     def finish_match(self, winner: int):
-        if winner == 1:
-            for player in self.team1:
-                player.mmr += 10 * self.mmr_diff_scaled
-                player.wins += 1
+        if self.maximal == sum([player.mmr for player in self.team1]):
+            if winner == 1:
+                for player in self.team1:
+                    player.mmr += self.higest_mmr
+                    player.wins += 1
 
-            for player in self.team2:
-                player.mmr -= 10 * self.mmr_diff_scaled
-                player.losses += 1
+                for player in self.team2:
+                    player.mmr -= self.lowest_mmr
+                    player.losses += 1
+            else:
+                for player in self.team1:
+                    player.mmr -= self.higest_mmr
+                    player.wins += 1
 
-        elif winner == 2:
+                for player in self.team2:
+                    player.mmr += self.lowest_mmr
+                    player.losses += 1
 
-            for player in self.team1:
-                player.mmr -= 10 * self.mmr_diff_scaled
-                player.losses += 1
+        
+        if self.maximal == sum([player.mmr for player in self.team2]):
+            if winner == 2:
+                for player in self.team2:
+                    player.mmr += self.lowest_mmr
+                    player.wins += 1
+                
+                for player in self.team1:
+                    player.mmr -= self.higest_mmr
+                    player.losses += 1
 
-            for player in self.team2:
-                player.mmr += 10 * self.mmr_diff_scaled
-                player.wins += 1
+            else:
+                for player in self.team2:
+                    player.mmr -= self.lowest_mmr
+                    player.wins += 1
+
+                for player in self.team1:
+                    player.mmr += self.higest_mmr
+                    player.losses += 1
 
         [player.update() for player in self.team1 + self.team2]
 
         self.db.insert_match(Match(self.match_id, self.team1,
-                             self.team2, winner, self.mmr_diff, self.timestamp))
+                            self.team2, winner, self.mmr_diff, self.timestamp))
 
 
 class MatchEmbed(discord.Embed):
