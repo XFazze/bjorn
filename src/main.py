@@ -34,7 +34,7 @@ async def alive(ctx):
 
 
 async def main():
-    cogs = ["info", "betterVC", "autoPublic", "league", "activePeople"]
+    cogs = ["info", "betterVC", "autoPublic", "league", "activePeople", "dev"]
     if os.getenv("DEV") != "TRUE":
         for cog in cogs:
             await bot.load_extension(f"cogs.{cog}")
