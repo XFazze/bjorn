@@ -52,7 +52,7 @@ class league(commands.Cog):
 
     @league.command(name="setrank", description=f"Sets a player's rank to a given rank or mmr")
     @permissions.admin()
-    async def setrank(self, ctx: commands.Context, member: discord.Member, rank: Optional[ranks_type], mmr: Optional[int]):
+    async def set_rank(self, ctx: commands.Context, member: discord.Member, rank: Optional[ranks_type], mmr: Optional[int]):
         if rank is not None:
             mmr = ranks_mmr[rank]
         elif mmr is not None:
