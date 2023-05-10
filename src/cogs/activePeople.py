@@ -51,6 +51,9 @@ class activePeople(general.Bjorn_cog):
             
             active_users = self.db.get_users_within_14days()
             for member in guild_object.members:
+                if member.bot:
+                    continue
+                
                 if member.id in active_users:  # active member
                     if inactive_role_object in member.roles:
                         await member.remove_roles(inactive_role_object)
