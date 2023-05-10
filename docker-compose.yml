@@ -2,7 +2,6 @@ version: '3'
 services:
   main:
     build: '.'
-    restart:
-      unless-stopped
+    restart: unless-stopped
     volumes:
-    - ./data:/data
+      - ./data:/app/data

@@ -34,17 +34,14 @@ async def alive(ctx):
 
 
 async def main():
+    cogs = ["info", "betterVC", "autoPublic", "league", "dev"]
     if os.getenv("DEV") != "TRUE":
-        await bot.load_extension("cogs.info")
-        await bot.load_extension("cogs.betterVC")
-        await bot.load_extension("cogs.autoPublic")
-        await bot.load_extension("cogs.leagueCustoms")
+        for cog in cogs:
+            await bot.load_extension(f"cogs.{cog}")
     else:
-        await bot.load_extension("cogs.leagueCustoms")
+        await bot.load_extension(f"cogs.{os.getenv('TEST_COG')}")
 
-    # await bot.load_extension("cogs.dev")
-    async with bot:
-        await bot.start(os.getenv("TOKEN"))
+    await bot.start(os.getenv("TOKEN"))
 
 
 asyncio.run(main())

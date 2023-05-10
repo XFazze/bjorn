@@ -3,38 +3,43 @@ import datetime
 import random
 import discord
 from discord.ext import commands
-from typing import Optional
+from typing import Optional, Literal
+
+import lib.general as general
 
 
 ranks_mmr = {
-    "i4": 500,
-    "i3": 550,
-    "i2": 600,
-    "i1": 650,
-    "b4": 700,
-    "b3": 750,
-    "b2": 800,
-    "b1": 850,
-    "s4": 900,
-    "s3": 950,
-    "s2": 1000,
-    "s1": 1050,
-    "g4": 1100,
-    "g3": 1150,
-    "g2": 1200,
-    "g1": 1250,
-    "p4": 1300,
-    "p3": 1350,
-    "p2": 1400,
-    "p1": 1450,
-    "d4": 1500,
-    "d3": 1550,
-    "d2": 1600,
-    "d1": 1650,
-    "master": 1700,
-    "grandmaster": 1850,
-    "challenger": 2300
+    "Iron 4": 500,
+    "Iron 3": 550,
+    "Iron 2": 600,
+    "Iron 1": 650,
+    "Bronze 4": 700,
+    "Bronze 3": 750,
+    "Bronze 2": 800,
+    "Bronze 1": 850,
+    "Silver 4": 900,
+    "Silver 3": 950,
+    "Silver 2": 1000,
+    "Silver 1": 1050,
+    "Gold 4": 1100,
+    "Gold 3": 1150,
+    "Gold 2": 1200,
+    "Gold 1": 1250,
+    "Platinum 4": 1300,
+    "Platinum 3": 1350,
+    "Platinum 2": 1400,
+    "Platinum 1": 1450,
+    "Diamond 4": 1500,
+    "Diamond 3": 1550,
+    "Diamond 2": 1600,
+    "Diamond 1": 1650,
+    "Master": 1700,
+    "Grandmaster": 1850,
+    "Challenger": 2300
 }
+
+ranks_type = Literal["Iron 2", "Iron 1", "Bronze 4", "Bronze 3", "Bronze 2", "Bronze 1", "Silver 4", "Silver 3", "Silver 2", "Silver 1", "Gold 4", "Gold 3",
+                     "Gold 2", "Gold 1", "Platinum 4", "Platinum 3", "Platinum 2", "Platinum 1", "Diamond 4", "Diamond 3", "Diamond 2", "Diamond 1", "Master", "Grandmaster", "Challenger"]
 
 
 class Tournament:
@@ -43,7 +48,7 @@ class Tournament:
 
 class Player:
     def __init__(self, bot, discord_id: int, get_matches=True):
-        self.db = Database(bot, "data/data.sqlite")
+        self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
 
         existing_player = self.db.cursor.execute(
@@ -54,6 +59,8 @@ class Player:
         self.mmr = existing_player[1] if existing_player else 1000
         self.wins = existing_player[2] if existing_player else 0
         self.losses = existing_player[3] if existing_player else 0
+        self.win_rate = self.wins / (self.wins + self.losses) * \
+            100 if self.wins + self.losses > 0 else 0
         self.matches = self.db.get_matches(discord_id) if get_matches else []
 
         if not existing_player:
@@ -86,21 +93,48 @@ class Match:
         self.timestamp = timestamp
 
 
-class Database:
+class Database(general.Database):
     def __init__(self, bot, db_name):
-        self.connection = sqlite3.connect(db_name)
-        self.cursor = self.connection.cursor()
+        super().__init__(db_name)
+        self.create_tables(
+            {
+                "player": [
+                    "discord_id",
+                    "mmr",
+                    "wins",
+                    "losses"
+                ],
+                "match": [
+                    "match_id",
+                    "team1",
+                    "team2",
+                    "winner",
+                    "mmr_diff",
+                    "timestamp"
+                ],
+                "mmr_history": [
+                    "discord_id",
+                    "mmr",
+                    "timestamp"
+                ]
+            }
+        )
         self.bot = bot
 
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS player(discord_id, mmr, wins, losses)"
-        )
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS match(match_id, team1, team2, winner, mmr_diff, timestamp)"
-        )
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS mmr_history(discord_id, mmr, timestamp)"
-        )
+    def get_all_matches(self):
+        res = self.cursor.execute(
+            f"SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match").fetchall()
+
+        matches = []
+        for i in res:
+            team1 = [Player(self.bot, int(i), get_matches=False)
+                     for i in i[1].split(" ")[0:-1]]
+            team2 = [Player(self.bot, int(i), get_matches=False)
+                     for i in i[2].split(" ")[0:-1]]
+
+            matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
+
+        return matches
 
     def get_matches(self, discord_id: int):
         res = self.cursor.execute(
@@ -120,6 +154,10 @@ class Database:
                 matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
         return matches
 
+    def get_all_players(self):
+        res = self.cursor.execute(f"SELECT discord_id FROM player").fetchall()
+        return [Player(self.bot, i[0]) for i in res]
+
     def insert_match(self, match: Match):
         team1_string = "".join(
             [str(player.discord_id) + " " for player in match.team1])
@@ -138,7 +176,7 @@ class Database:
 
 class CustomMatch:
     def __init__(self, bot, creator: discord.Member, team1: list[Player], team2: list[Player]):
-        self.db = Database(bot, "data/data.sqlite")
+        self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
         self.creator = creator
         self.team1 = team1
@@ -223,38 +261,170 @@ class MatchEmbed(discord.Embed):
 
 
 class MatchView(discord.ui.View):
-    def __init__(self, match: CustomMatch):
+    def __init__(self, match: CustomMatch, base_embed: discord.Embed):
         super().__init__(timeout=7200)
 
-        buttons = [
+        self.current_embed = None
+        self.base_embed = base_embed
+
+        self.buttons = [
             discord.ui.Button(
                 label="Left Win", style=discord.ButtonStyle.green, custom_id="left"),
             discord.ui.Button(
                 label="Right Win", style=discord.ButtonStyle.green, custom_id="right"),
             discord.ui.Button(
-                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=1)
+                label="Players", style=discord.ButtonStyle.blurple, custom_id="players", row=1),
+            discord.ui.Button(
+                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=2)
         ]
 
         async def win_callback(interaction: discord.Interaction):
+            self.current_embed = interaction.message.embeds[0]
+            if interaction.data["custom_id"] == "players":
+                if self.current_embed.title == "Players":
+                    embed = base_embed
+                    self.buttons[2].label = "Players"
+                else:
+                    players = [i for i in match.db.get_all_players(
+                    ) if i.discord_id in [i.discord_id for i in match.team1 + match.team2]]
+
+                    embed = discord.Embed(title=f"Players", color=0x228888)
+                    embed.add_field(name="Name", value="\n".join(
+                        [p.discord_name for p in players]))
+                    embed.add_field(name="Win rate", value="\n".join(
+                        [f"{p.win_rate:.1f}%" for p in players]))
+                    embed.add_field(name="Matches", value="\n".join(
+                        [f"{len(p.matches)}" for p in players]))
+
+                    self.buttons[2].label = "Teams"
+
+                await interaction.message.edit(embed=embed, view=self)
+                await interaction.response.defer()
+                return
+
             if interaction.user != match.creator:
                 return
 
             if interaction.data["custom_id"] == "discard":
-                interaction.message.embeds[0].title = "Match Discarded"
-                interaction.message.embeds[0].color = 0xFF0000
-                await interaction.message.edit(embed=interaction.message.embeds[0], view=None)
+                self.current_embed.title = "Match Discarded"
+                self.current_embed.color = 0xFF0000
+                await interaction.message.edit(embed=self.current_embed, view=None)
                 return
-
-            if interaction.data["custom_id"] == "left":
+            elif interaction.data["custom_id"] == "left":
                 match.finish_match(1)
+                await interaction.response.defer()
             elif interaction.data["custom_id"] == "right":
                 match.finish_match(2)
+                await interaction.response.defer()
 
-            interaction.message.embeds[0].title = f"Winner: {'Left' if interaction.data['custom_id'] == 'left' else 'Right'} Team"
-            await interaction.message.edit(embed=interaction.message.embeds[0], view=None)
+            self.current_embed.title = f"Winner: {'Left' if interaction.data['custom_id'] == 'left' else 'Right'} Team"
+            await interaction.message.edit(embed=self.current_embed, view=None)
 
-        for button in buttons:
+        for button in self.buttons:
             button.callback = win_callback
+            self.add_item(button)
+
+
+class QueueEmbed(discord.Embed):
+    def __init__(self, queue: list[Player]):
+        super().__init__(title="Queue", color=0x00FF42)
+
+        self.add_field(name="Players", value='\n'.join(
+            [p.discord_name for p in queue]))
+
+
+class QueueView(discord.ui.View):
+    def __init__(self, bot):
+        super().__init__(timeout=10800)  # I think 3 hours
+        self.db = Database(bot, "data/league.sqlite")
+        self.bot = bot
+
+        self.buttons = [
+            discord.ui.Button(
+                label="Queue", style=discord.ButtonStyle.green, custom_id="queue"),
+            discord.ui.Button(
+                label="Start match", style=discord.ButtonStyle.green, custom_id="start"),
+            discord.ui.Button(
+                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=2)
+        ]
+
+        self.queue = []
+
+        async def queue_callback(interaction: discord.Interaction):
+            if interaction.data["custom_id"] == "queue":
+                if interaction.user in self.queue:
+                    self.queue.remove(interaction.user)
+                else:
+                    self.queue.append(interaction.user)
+
+                await interaction.message.edit(embed=QueueEmbed([Player(self.bot, p.id, False) for p in self.queue]), view=self)
+                await interaction.response.defer()
+                return
+
+            if interaction.data["custom_id"] == "discard":
+                await interaction.message.delete()
+                return
+
+            if interaction.data["custom_id"] == "start":
+                if len(self.queue) < 2:
+                    await interaction.response.send_message("Not enough players in queue", ephemeral=True)
+                    await interaction.response.defer()
+                    return
+
+                team1, team2 = generate_teams(
+                    [Player(self.bot, p.id, False) for p in self.queue])
+                match = CustomMatch(self.bot, interaction.user, team1, team2)
+
+                embed = MatchEmbed(team1, team2)
+                view = MatchView(match, embed)
+
+                await interaction.channel.send(embed=embed, view=view)
+                await interaction.message.delete()
+                await interaction.response.defer()
+                return
+
+        for button in self.buttons:
+            button.callback = queue_callback
+            self.add_item(button)
+
+
+class PlayerMatchesView(discord.ui.View):
+    def __init__(self, embeds):
+        super().__init__(timeout=7200)
+
+        self.embeds = embeds
+        self.current_embed = None
+
+        self.buttons = [
+            discord.ui.Button(
+                label="Previous", style=discord.ButtonStyle.blurple, custom_id="prev", row=1),
+            discord.ui.Button(
+                label="Next", style=discord.ButtonStyle.blurple, custom_id="next", row=1),
+            discord.ui.Button(
+                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=2)
+        ]
+
+        async def callback(interaction: discord.Interaction):
+            self.current_embed = interaction.message.embeds[0]
+
+            if interaction.data["custom_id"] == "discard":
+                await interaction.message.delete()
+                return
+
+            if interaction.data["custom_id"] == "prev":
+                self.current_embed = self.embeds[self.embeds.index(
+                    self.current_embed) - 1]
+                await interaction.response.defer()
+            elif interaction.data["custom_id"] == "next":
+                self.current_embed = self.embeds[self.embeds.index(
+                    self.current_embed) + 1]
+                await interaction.response.defer()
+
+            await interaction.message.edit(embed=self.current_embed, view=self)
+            await interaction.response.defer()
+
+        for button in self.buttons:
+            button.callback = callback
             self.add_item(button)
 
 
