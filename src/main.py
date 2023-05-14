@@ -44,6 +44,7 @@ async def main():
         await bot.load_extension("cogs.league")
         await bot.load_extension("cogs.dev")
         await bot.load_extension("cogs.info")
+        await bot.load_extension("cogs.stats")
 
     await bot.start(os.getenv("TOKEN"))
 

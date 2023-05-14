@@ -2,8 +2,8 @@ import lib.general as general
 
 
 class Database(general.Database):
-    def __init__(self, db_path):
-        super().__init__(db_path)
+    def __init__(self):
+        super().__init__("data/stats.sqlite")
         self.create_tables(
             {
                 "user": [
@@ -87,9 +87,89 @@ class Database(general.Database):
                     "vc_time_streaming",
                     "vc_time_muted",
                     "vc_time_deafened"
+                ],
+                "joined": [
+                    "user_id",
+                    "timestamp"
+                ],
+                "muted": [
+                    "user_id",
+                    "timestamp"
+                ],
+                "deafened": [
+                    "user_id",
+                    "timestamp"
+                ],
+                "streaming": [
+                    "user_id",
+                    "timestamp"
                 ]
             }
         )
+
+    def insert_user(self, user_id):
+        self.cursor.execute(
+            f"""
+                INSERT INTO user (user_id) VALUES ({user_id})
+            """
+        )
+        self.connection.commit()
+
+    def insert_guild_user(self, user_id, guild_id):
+        self.cursor.execute(
+            f"""
+                INSERT INTO guild (user_id, guild_id) VALUES ({user_id}, {guild_id})
+            """
+        )
+        self.connection.commit()
+
+    def insert_text_channel_user(self, user_id, guild_id, channel_id):
+        self.cursor.execute(
+            f"""
+                INSERT INTO text_channel (user_id, guild_id, channel_id) VALUES ({user_id}, {guild_id}, {channel_id})
+            """
+        )
+        self.connection.commit()
+
+    def insert_voice_channel_user(self, user_id, guild_id, channel_id):
+        self.cursor.execute(
+            f"""
+                INSERT INTO voice_channel (user_id, guild_id, channel_id) VALUES ({user_id}, {guild_id}, {channel_id})
+            """
+        )
+        self.connection.commit()
+
+    def get_user(self, user_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM user WHERE user_id = {user_id}
+            """
+        )
+        return self.cursor.fetchone()
+
+    def get_guild_user(self, user_id, guild_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM guild WHERE user_id = {user_id} AND guild_id = {guild_id}
+            """
+        )
+        return self.cursor.fetchone()
+
+    def get_text_channel_user(self, user_id, guild_id, channel_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM text_channel WHERE user_id = {user_id} AND guild_id = {guild_id} AND channel_id = {channel_id}
+            """
+        )
+        return self.cursor.fetchone()
+
+    def get_voice_channel_user(self, user_id, guild_id, channel_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM voice_channel WHERE user_id = {user_id} AND guild_id = {guild_id} AND channel_id = {channel_id}
+            """
+        )
+        return self.cursor.fetchone()
 
     def update_user(self, user_id, messages=0, commands=0, reactions=0, vc_time=0, vc_joins=0, vc_leaves=0, vc_time_muted=0, vc_time_deafened=0, vc_time_streaming=0):
         self.cursor.execute(
@@ -181,3 +261,113 @@ class Database(general.Database):
             """
         )
         self.connection.commit()
+
+    def get_joined_users(self):
+        self.cursor.execute(
+            f"""
+                SELECT user_id, timestamp FROM joined
+            """
+        )
+        return self.cursor.fetchall()
+
+    def get_muted_users(self):
+        self.cursor.execute(
+            f"""
+                SELECT user_id, timestamp FROM muted
+            """
+        )
+        return self.cursor.fetchall()
+
+    def get_deafened_users(self):
+        self.cursor.execute(
+            f"""
+                SELECT user_id, timestamp FROM deafened
+            """
+        )
+        return self.cursor.fetchall()
+
+    def get_streaming_users(self):
+        self.cursor.execute(
+            f"""
+                SELECT user_id, timestamp FROM streaming
+            """
+        )
+        return self.cursor.fetchall()
+
+    def insert_joined_user(self, user_id, timestamp):
+        self.cursor.execute(
+            f"""
+                INSERT INTO joined (user_id, timestamp) \
+                VALUES ({user_id}, {timestamp})
+            """
+        )
+        self.connection.commit()
+
+    def insert_muted_user(self, user_id, timestamp):
+        self.cursor.execute(
+            f"""
+                INSERT INTO muted (user_id, timestamp) \
+                VALUES ({user_id}, {timestamp})
+            """
+        )
+        self.connection.commit()
+
+    def insert_deafened_user(self, user_id, timestamp):
+        self.cursor.execute(
+            f"""
+                INSERT INTO deafened (user_id, timestamp) \
+                VALUES ({user_id}, {timestamp})
+            """
+        )
+        self.connection.commit()
+
+    def insert_streaming_user(self, user_id, timestamp):
+        self.cursor.execute(
+            f"""
+                INSERT INTO streaming (user_id, timestamp) \
+                VALUES ({user_id}, {timestamp})
+            """
+        )
+        self.connection.commit()
+
+    def remove_joined_user(self, user_id):
+        self.cursor.execute(
+            f"""
+                DELETE FROM joined WHERE user_id = {user_id}
+            """
+        )
+        self.connection.commit()
+
+    def remove_muted_user(self, user_id):
+        self.cursor.execute(
+            f"""
+                DELETE FROM muted WHERE user_id = {user_id}
+            """
+        )
+        self.connection.commit()
+
+    def remove_deafened_user(self, user_id):
+        self.cursor.execute(
+            f"""
+                DELETE FROM deafened WHERE user_id = {user_id}
+            """
+        )
+        self.connection.commit()
+
+    def remove_streaming_user(self, user_id):
+        self.cursor.execute(
+            f"""
+                DELETE FROM streaming WHERE user_id = {user_id}
+            """
+        )
+        self.connection.commit()
+
+    def ensure_user_entries(self, user_id, guild_id, channel_id=None, channel_type=None):
+        if not self.get_user(user_id):
+            self.insert_user(user_id)
+        if not self.get_guild_user(user_id, guild_id):
+            self.insert_guild_user(user_id, guild_id)
+        if channel_id and not self.get_text_channel_user(user_id, guild_id, channel_id) and channel_type == "text":
+            self.insert_text_channel_user(user_id, guild_id, channel_id)
+        if channel_id and not self.get_voice_channel_user(user_id, guild_id, channel_id) and channel_type == "voice":
+            self.insert_voice_channel_user(user_id, guild_id, channel_id)
