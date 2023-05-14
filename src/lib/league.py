@@ -94,8 +94,8 @@ class Match:
 
 
 class Database(general.Database):
-    def __init__(self, bot, db_name):
-        super().__init__(db_name)
+    def __init__(self, bot):
+        super().__init__("data/league.sqlite")
         self.create_tables(
             {
                 "player": [

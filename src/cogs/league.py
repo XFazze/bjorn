@@ -9,7 +9,7 @@ from lib.league import Database, Player, CustomMatch, Tournament, CustomMatch, g
 class league(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
 
     @commands.hybrid_group(name="league", description="League commands")
     async def league(self, ctx: commands.Context): pass
