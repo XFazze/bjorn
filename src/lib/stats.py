@@ -21,6 +21,12 @@ class Database(general.Database):
                 "guild": [
                     "user_id",
                     "guild_id",
+                    "vc_time",
+                    "vc_joins",
+                    "vc_leaves",
+                    "vc_time_muted",
+                    "vc_time_deafened",
+                    "vc_time_streaming",
                     "messages",
                     "commands"
                 ],
@@ -189,12 +195,18 @@ class Database(general.Database):
         )
         self.connection.commit()
 
-    def update_guild_user(self, user_id, guild_id, messages=0, commands=0):
+    def update_guild_user(self, user_id, guild_id, messages=0, commands=0, vc_time=0, vc_joins=0, vc_leaves=0, vc_time_muted=0, vc_time_deafened=0, vc_time_streaming=0):
         self.cursor.execute(
             f"""
                 UPDATE guild SET \
                 messages = messages + {messages}, \
-                commands = commands + {commands} \
+                commands = commands + {commands}, \
+                vc_time = vc_time + {vc_time}, \
+                vc_joins = vc_joins + {vc_joins}, \
+                vc_leaves = vc_leaves + {vc_leaves}, \
+                vc_time_muted = vc_time_muted + {vc_time_muted}, \
+                vc_time_deafened = vc_time_deafened + {vc_time_deafened}, \
+                vc_time_streaming = vc_time_streaming + {vc_time_streaming} \
                 WHERE user_id = {user_id} AND guild_id = {guild_id}
             """
         )
@@ -362,12 +374,38 @@ class Database(general.Database):
         )
         self.connection.commit()
 
-    def ensure_user_entries(self, user_id, guild_id, channel_id=None, channel_type=None):
-        if not self.get_user(user_id):
+    def ensure_user_entry(self, user_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM user WHERE user_id = {user_id}
+            """
+        )
+        if self.cursor.fetchone() is None:
             self.insert_user(user_id)
-        if not self.get_guild_user(user_id, guild_id):
-            self.insert_guild_user(user_id, guild_id)
-        if channel_id and not self.get_text_channel_user(user_id, guild_id, channel_id) and channel_type == "text":
-            self.insert_text_channel_user(user_id, guild_id, channel_id)
-        if channel_id and not self.get_voice_channel_user(user_id, guild_id, channel_id) and channel_type == "voice":
-            self.insert_voice_channel_user(user_id, guild_id, channel_id)
+
+    def ensure_guild_entry(self, user_id, guild_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM guild WHERE user_id = {user_id} AND guild_id = {guild_id}
+            """
+        )
+        if self.cursor.fetchone() is None:
+            self.insert_guild(user_id, guild_id)
+
+    def ensure_text_channel_entry(self, user_id, guild_id, channel_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM text_channel WHERE user_id = {user_id} AND guild_id = {guild_id} AND channel_id = {channel_id}
+            """
+        )
+        if self.cursor.fetchone() is None:
+            self.insert_text_channel(user_id, guild_id, channel_id)
+
+    def ensure_voice_channel_entry(self, user_id, guild_id, channel_id):
+        self.cursor.execute(
+            f"""
+                SELECT * FROM voice_channel WHERE user_id = {user_id} AND guild_id = {guild_id} AND channel_id = {channel_id}
+            """
+        )
+        if self.cursor.fetchone() is None:
+            self.insert_voice_channel(user_id, guild_id, channel_id)
