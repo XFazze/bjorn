@@ -5,7 +5,7 @@ import sqlite3
 import lib.persmissions as permissions
 
 
-class dev(commands.Cog):
+class DevCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -33,4 +33,4 @@ class dev(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(dev(bot))
+    await bot.add_cog(DevCog(bot))

@@ -35,16 +35,15 @@ async def alive(ctx):
 
 async def main():
     if os.getenv("DEV") != "TRUE":
-        await bot.load_extension("cogs.info")
-        await bot.load_extension("cogs.betterVC")
-        await bot.load_extension("cogs.autoPublic")
-        await bot.load_extension("cogs.league")
+        await bot.load_extension("cogs.InfoCog")
+        await bot.load_extension("cogs.BetterVCCog")
+        await bot.load_extension("cogs.AutoPublicCog")
+        await bot.load_extension("cogs.LeagueCog")
 
     else:
-        await bot.load_extension("cogs.league")
-        await bot.load_extension("cogs.dev")
-        await bot.load_extension("cogs.info")
-        await bot.load_extension("cogs.stats")
+        await bot.load_extension("cogs.DevCog")
+        await bot.load_extension("cogs.InfoCog")
+        await bot.load_extension("cogs.EventCog")
 
     await bot.start(os.getenv("TOKEN"))
 

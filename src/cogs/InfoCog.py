@@ -4,7 +4,7 @@ import discord
 import typing
 
 
-class info(commands.Cog):
+class InfoCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.start_time = datetime.now()
@@ -117,4 +117,4 @@ class info(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(info(bot))
+    await bot.add_cog(InfoCog(bot))

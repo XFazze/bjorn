@@ -5,7 +5,7 @@ import discord
 import typing
 
 
-class betterVC(commands.Cog):
+class BetterVCCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.hideChannels.start()
@@ -26,7 +26,7 @@ class betterVC(commands.Cog):
 
             showchannel = empty_channels.pop(0)
             await showchannel.set_permissions(guild_object.default_role, overwrite=None)
-        
+
             for hiding_channel in empty_channels:
                 await hiding_channel.set_permissions(
                     guild_object.default_role, read_messages=False
@@ -66,4 +66,4 @@ class betterVC(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(betterVC(bot))
+    await bot.add_cog(BetterVCCog(bot))

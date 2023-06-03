@@ -6,7 +6,7 @@ import lib.persmissions as permissions
 from lib.league import Database, Player, CustomMatch, Tournament, CustomMatch, generate_teams, MatchEmbed, MatchView, ranks_mmr, ranks_type, QueueView, QueueEmbed, PlayerMatchesView, Match
 
 
-class League(commands.Cog):
+class LeagueCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database(bot)
@@ -144,4 +144,4 @@ class League(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(League(bot))
+    await bot.add_cog(LeagueCog(bot))

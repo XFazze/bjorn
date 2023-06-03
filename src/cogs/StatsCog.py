@@ -5,7 +5,7 @@ from datetime import timedelta, datetime
 from lib.stats import Database
 
 
-class Stats(commands.Cog):
+class StatsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = Database()
@@ -106,4 +106,4 @@ class Stats(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Stats(bot))
+    await bot.add_cog(StatsCog(bot))

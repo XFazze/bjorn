@@ -4,7 +4,7 @@ import discord
 import typing
 
 
-class autoPublic(commands.Cog):
+class AutoPublicCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -16,4 +16,4 @@ class autoPublic(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(autoPublic(bot))
+    await bot.add_cog(AutoPublicCog(bot))
