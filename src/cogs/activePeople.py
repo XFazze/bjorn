@@ -1,7 +1,7 @@
 from discord.ext import commands, tasks
 import time
-
 import lib.general as general
+import os
 
 class Active_people_database(general.Database):
     def __init__(self):
@@ -23,11 +23,9 @@ class Active_people_database(general.Database):
     
     def get_users_within_14days(self):
         res = self.cursor.execute(f"SELECT user_id, timestamp FROM user").fetchall()
-        seconds_14days = 60*60*24*14
-        time_now_seconds = time.time()
-        filter(lambda user: user[1]+seconds_14days < time_now_seconds, res)
-        users_ids = [user[0] for user in res]
-        return users_ids
+        fourteen_days_in_seconds = 60*60*24*14
+        filter(lambda user: user[1]+fourteen_days_in_seconds < time.time(), res)
+        return [user[0] for user in res]
 
 
 class activePeople(general.Bjorn_cog):
@@ -36,8 +34,8 @@ class activePeople(general.Bjorn_cog):
         self.bot = bot
         self.update_active_people.start()
         self.db = Active_people_database()
-        self.active_role_id = 1105823135091130428
-        self.inactive_role_id = 1105823231488831538
+        self.active_role_id = int(os.getenv("LOADING_ACTIVE_ROLE_ID"))
+        self.inactive_role_id = int(os.getenv("LOADING_INACTIVE_ROLE_ID"))
 
     def cog_unload(self):
         self.update_active_people.cancel()
@@ -60,6 +58,7 @@ class activePeople(general.Bjorn_cog):
                     
                     if active_role_object not in member.roles: 
                         await member.add_roles(active_role_object)
+                        
                 else: # inactive member
                     if active_role_object in member.roles: 
                         await member.remove_roles(active_role_object)
@@ -80,7 +79,6 @@ class activePeople(general.Bjorn_cog):
         if after.channel is None or member.guild.id != self.loading_id or not member or member.bot:
             return
         try:
-            print("on voice stat eupdate")
             self.db.update_user(member.id)
         except Exception as e:
             print("update_active_people on_voice_state_update error: ", e)

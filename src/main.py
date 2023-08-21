@@ -15,8 +15,7 @@ else:
     discord.utils.setup_logging(
         level=logging.INFO, root=False, handler=handler)
 
-bot = commands.Bot(intents=discord.Intents.all(), command_prefix=os.getenv(
-    "PREFIX") if os.getenv("PREFIX") else "¤")
+bot = commands.Bot(intents=discord.Intents.all(), command_prefix=os.getenv("PREFIX") )
 
 
 @bot.event
@@ -40,7 +39,6 @@ async def main():
             await bot.load_extension(f"cogs.{cog}")
     else:
         await bot.load_extension(f"cogs.{os.getenv('TEST_COG')}")
-
     await bot.start(os.getenv("TOKEN"))
 
 

@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Dict, List
 from discord.ext import commands
-
+import os
 
 class Database:
     def __init__(self, db_path):
@@ -20,5 +20,5 @@ class Database:
 
 class Bjorn_cog(commands.Cog):
     def __init__(self, bot):
-        self.loading_id = 802298523214938153
+        self.loading_id = int(os.getenv("LOADING_ID"))
         
