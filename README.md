@@ -4,8 +4,6 @@ Discord bot using discordpy framework.
 ## Development
 
 ### Enviromental variables
-In .env file.
+In .env.secret file.
 - TOKEN for discord bot
-- DEV
 - DB for sqlite database location (/data/data.sqlite)
-- 
