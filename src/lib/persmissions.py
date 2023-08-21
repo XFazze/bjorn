@@ -1,10 +1,10 @@
 from discord.ext import commands
 import discord
-
+import os
 
 def admin():
     async def predicate(ctx):
-        return 802299956299169845 in [role.id for role in ctx.author.roles]
+        return int(os.getenv("LOADING_ADMIN_ROLE_ID")) in [role.id for role in ctx.author.roles]
     return commands.check(predicate)
 
 

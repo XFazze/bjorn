@@ -1,7 +1,5 @@
-from datetime import timedelta, datetime
 from discord.ext import commands
-import discord
-import typing
+import os
 
 
 class autoPublic(commands.Cog):
@@ -10,9 +8,8 @@ class autoPublic(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        if member.guild.id != 802298523214938153:
-            return
-        await member.add_roles(member.guild.get_role(802305915491319838))
+        if member.guild.id == int(os.getenv("LOADING_ID")):
+            await member.add_roles(member.guild.get_role(int(os.getenv("LOADING_PUBLIC_ROLE_ID"))))
 
 
 async def setup(bot):

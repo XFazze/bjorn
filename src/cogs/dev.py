@@ -1,6 +1,6 @@
+import os
 from discord.ext import commands
 import discord
-import sqlite3
 
 import lib.persmissions as permissions
 
@@ -30,6 +30,19 @@ class dev(commands.Cog):
     async def sync(self, ctx: commands.Context):
         await self.bot.tree.sync()
         await ctx.reply(embed=discord.Embed(title=f"Synced!", color=0x00FF42))
+        
+        
+    @commands.hybrid_command(name="devchannel", description="Creates a dev channel")
+    @permissions.admin()
+    async def devchannel(self, ctx: commands.Context):
+        category_search = [category for  category in ctx.guild.categories if category.name==os.getenv("DEV_TEST_CATEGORY_NAME")]
+        if len(category_search) == 0:
+            category = await ctx.guild.create_category(os.getenv("DEV_TEST_CATEGORY_NAME"), overwrites={ctx.guild.default_role:discord.PermissionOverwrite(read_messages=False)})
+        else:
+            category = category_search[0]
+        channel = await ctx.guild.create_text_channel(os.getenv("DEV_TEST_CHANNEL_NAME")+str(len(category.text_channels)), overwrites={ctx.guild.default_role:discord.PermissionOverwrite(read_messages=False),ctx.author: discord.PermissionOverwrite(read_messages=True)}, category=category)
+        await channel.send(embed=discord.Embed(title=f"Created dev channel!", color=0x00FF42))
+        
 
 
 async def setup(bot):

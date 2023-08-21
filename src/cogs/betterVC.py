@@ -1,8 +1,6 @@
-from datetime import timedelta, datetime
+import os
 from discord.ext import commands, tasks
 from discord.utils import get
-import discord
-import typing
 
 
 class betterVC(commands.Cog):
@@ -16,8 +14,8 @@ class betterVC(commands.Cog):
     @tasks.loop(seconds=60.0)
     async def hideChannels(self):
         try:
-            guild_object = self.bot.get_guild(802298523214938153)
-            category_object = get(self.bot.get_all_channels(), id=811447688532066314)
+            guild_object = self.bot.get_guild(int(os.getenv("LOADING_ID")))
+            category_object = get(self.bot.get_all_channels(), id=int(os.getenv("BETTERVC_CATEGORY_ID")))
 
             empty_channels = []
             for channel in category_object.channels:
@@ -44,9 +42,9 @@ class betterVC(commands.Cog):
     async def on_voice_state_update(self, member, before, after):
         if after.channel is None:
             return
-        guild_object = self.bot.get_guild(802298523214938153)
+        guild_object = self.bot.get_guild(int(os.getenv("LOADING_ID")))
         if (
-            after.channel.category_id == 811447688532066314
+            after.channel.category_id == int(os.getenv("BETTERVC_CATEGORY_ID"))
             and len(after.channel.members) == 1
         ):
             category_object = get(
