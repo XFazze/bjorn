@@ -5,7 +5,7 @@ import os
 
 class Active_people_database(general.Database):
     def __init__(self):
-        super().__init__("data/activePeople.db")
+        super().__init__("data/activePeople.sqlite")
         self.cursor.execute(
             f"""
                     CREATE TABLE IF NOT EXISTS user(user_id UNIQUE, timestamp)

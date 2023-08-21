@@ -17,18 +17,24 @@ class league(commands.Cog):
     @league.command(name="customs", description="Creates a league custom match instance with teams from the current voice channel.")
     @permissions.admin()
     @permissions.voice()
-    async def customs(self, ctx: commands.Context, add_player_1: Optional[discord.Member], add_player_2: Optional[discord.Member], add_player_3: Optional[discord.Member], add_player_4: Optional[discord.Member], add_player_5: Optional[discord.Member], add_player_6: Optional[discord.Member], add_player_7: Optional[discord.Member], add_player_8: Optional[discord.Member], ):
+    async def customs(self, ctx: commands.Context, toggle_player_1: Optional[discord.Member], toggle_player_2: Optional[discord.Member], toggle_player_3: Optional[discord.Member], toggle_player_4: Optional[discord.Member], toggle_player_5: Optional[discord.Member], toggle_player_6: Optional[discord.Member], toggle_player_7: Optional[discord.Member], toggle_player_8: Optional[discord.Member], ):
         member_players = ctx.author.voice.channel.members
 
-        additional_players = [add_player_1, add_player_2, add_player_3,
-                              add_player_4, add_player_5, add_player_6, add_player_7, add_player_8]
-        additional_players = [i for i in additional_players if i is not None]
+        toggle_additional_players = [toggle_player_1, toggle_player_2, toggle_player_3,
+                                     toggle_player_4, toggle_player_5, toggle_player_6,
+                                     toggle_player_7, toggle_player_8]
+        toggle_additional_players = [
+            i for i in toggle_additional_players if i is not None]
 
-        for player in additional_players:
-            if player not in member_players:
-                member_players.append(player)
-            elif player in players:
-                member_players.remove(player)
+        for player in toggle_additional_players:
+            removed = False
+            for toggle_player in member_players:
+                if toggle_player.id == player.id:
+                    member_players.remove(toggle_player)
+                    removed = True
+            if not removed:
+                if player not in member_players:
+                    member_players.append(player)
 
         if len(member_players) < 2:
             await ctx.reply(embed=discord.Embed(title=f"Not enough players in voice channel!", color=0xFF0000))
@@ -63,6 +69,12 @@ class league(commands.Cog):
         player.update()
 
         await ctx.reply(embed=discord.Embed(title=f"{member.name}'s mmr has been set to {rank if rank is not None else mmr}: {mmr}", color=0x00FF42))
+
+    @league.command(name="getmmr", description=f"Gets a player's mmr")
+    @permissions.admin()
+    async def get_mmr(self, ctx: commands.Context, member: discord.Member):
+        player = Player(self.bot, member.id)
+        await ctx.reply(embed=discord.Embed(title=f"{member.name}'s mmr is {player.mmr}", color=0x00FF42))
 
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
