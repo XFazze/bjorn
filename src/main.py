@@ -6,7 +6,9 @@ import discord
 from discord.ext import commands
 from cogwatch import Watcher
 import logging
-load_dotenv()
+load_dotenv(".env")
+load_dotenv(".env.secret")
+
 if os.getenv("DEV") != "TRUE":
     discord.utils.setup_logging(level=logging.INFO, root=False)
 else:
@@ -21,10 +23,6 @@ bot = commands.Bot(intents=discord.Intents.all(), command_prefix=os.getenv("PREF
 @bot.event
 async def on_ready():
     print(f"We have logged in as {bot.user}")
-    # if os.getenv("DEV") == "TRUE":
-    #     print("DEV MODE ACTIVE")
-    #     watcher = Watcher(bot, path="cogs", preload=True, debug=True)
-    #     await watcher.start()
 
 
 @bot.command()
