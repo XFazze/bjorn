@@ -119,7 +119,7 @@ class league(commands.Cog):
         toggle_player_7: Optional[discord.Member],
         toggle_player_8: Optional[discord.Member],
     ):
-        member_players = ctx.author.voice.channel.members
+        voice_players = ctx.author.voice.channel.members
 
         toggle_additional_players = [
             toggle_player_1,
@@ -131,28 +131,16 @@ class league(commands.Cog):
             toggle_player_7,
             toggle_player_8,
         ]
-        toggle_additional_players = [
-            i for i in toggle_additional_players if i is not None
+        toggle_additional_player_ids = [
+            i.id for i in toggle_additional_players if i is not None
+        ]
+        players = [
+            player
+            for player in voice_players
+            if player.id not in toggle_additional_player_ids
         ]
 
-        for player in toggle_additional_players:
-            removed = False
-            for toggle_player in member_players:
-                if toggle_player.id == player.id:
-                    member_players.remove(toggle_player)
-                    removed = True
-            if not removed:
-                if player not in member_players:
-                    member_players.append(player)
-
-        if len(member_players) < 8:
-            await ctx.reply(
-                embed=discord.Embed(
-                    title=f"Not enough players in voice channel!", color=0xFF0000
-                )
-            )
-            return
-        if len(member_players) > 8:
+        if len(players) > 8:
             await ctx.reply(
                 embed=discord.Embed(
                     title=f"Too many players in voice channel!", color=0xFF0000
@@ -160,14 +148,14 @@ class league(commands.Cog):
             )
             return
 
-        players = [Player(self.bot, i.id) for i in member_players]
-        random.shuffle(random)
+        random.shuffle(players)
         embed = discord.Embed(
             title="Arena teams", description=self.bot.description, color=0x00FF42
         )
-        for i in range(4):
+        for i in range(len(players) // 2):
             embed.add_field(
-                name=f"Team {i*2}", value=f"'{players[i]}' and '{players[i*2+1]}'"
+                name=f"Team {i*2}",
+                value=f"'{players[i].name}' and '{players[i*2+1].name}'",
             )
 
         await ctx.reply(embed=embed)
