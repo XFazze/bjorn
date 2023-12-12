@@ -155,7 +155,7 @@ class league(commands.Cog):
         for i in range(len(players) // 2):
             embed.add_field(
                 name=f"Team {i*2}",
-                value=f"'{players[i].name}' and '{players[i*2+1].name}'",
+                value=f"'{players[i*2].name}' and '{players[i*2+1].name}'",
             )
 
         await ctx.reply(embed=embed)
