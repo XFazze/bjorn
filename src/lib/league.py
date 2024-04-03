@@ -213,8 +213,10 @@ class Database(general.Database):
         return [Player(self.bot, i[0]) for i in res]
 
     def insert_match(self, match: Match):
-        team1_string = "".join([str(player.discord_id) + " " for player in match.team1])
-        team2_string = "".join([str(player.discord_id) + " " for player in match.team2])
+        team1_string = "".join(
+            [str(player.discord_id) + " " for player in match.team1])
+        team2_string = "".join(
+            [str(player.discord_id) + " " for player in match.team2])
 
         insertion = f"INSERT INTO match (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
         self.cursor.execute(
@@ -237,7 +239,8 @@ class Database(general.Database):
         self.connection.commit()
 
     def remove_player(self, player: discord.Member):
-        self.cursor.execute(f"DELETE FROM player WHERE discord_id = {player.id}")
+        self.cursor.execute(
+            f"DELETE FROM player WHERE discord_id = {player.id}")
         self.connection.commit()
 
     def remove_match(self, match_id: int):
@@ -390,11 +393,13 @@ class MatchView(discord.ui.View):
                     )
                     embed.add_field(
                         name="Win rate",
-                        value="\n".join([f"{p.win_rate:.1f}%" for p in players]),
+                        value="\n".join(
+                            [f"{p.win_rate:.1f}%" for p in players]),
                     )
                     embed.add_field(
                         name="Matches",
-                        value="\n".join([f"{len(p.matches)}" for p in players]),
+                        value="\n".join(
+                            [f"{len(p.matches)}" for p in players]),
                     )
 
                     self.buttons[2].label = "Teams"
@@ -478,7 +483,8 @@ class QueueEmbed(discord.Embed):
     def __init__(self, queue: list[Player]):
         super().__init__(title=f"Queue {len(queue)}p", color=0x00FF42)
 
-        self.add_field(name="Players", value="\n".join([p.discord_name for p in queue]))
+        self.add_field(name="Players", value="\n".join(
+            [p.discord_name for p in queue]))
 
 
 class QueueView(discord.ui.View):
@@ -546,6 +552,99 @@ class QueueView(discord.ui.View):
 
         for button in self.buttons:
             button.callback = queue_callback
+            self.add_item(button)
+
+
+class FreeEmbed(discord.Embed):
+    def __init__(self, team1: list[Player], team2: list[Player]):
+        super().__init__(title="Create teams", color=0x00FF42)
+
+        self.add_field(name="Team 1", value='\n'.join(
+            [p.discord_name for p in team1]))
+        self.add_field(name="Team 2", value='\n'.join(
+            [p.discord_name for p in team2]))
+
+
+class FreeView(discord.ui.View):
+    def __init__(self, bot):
+        super().__init__(timeout=10800)
+        self.bot = bot
+
+        self.buttons = [
+            discord.ui.Button(
+                label="Join team 1", style=discord.ButtonStyle.blurple, custom_id="join_team_1"),
+            discord.ui.Button(
+                label="Join team 2", style=discord.ButtonStyle.blurple, custom_id="join_team_2"),
+            discord.ui.Button(
+                label="Start match", style=discord.ButtonStyle.green, custom_id="start", row=2),
+            discord.ui.Button(
+                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=2)
+        ]
+
+        self.team1 = []
+        self.team2 = []
+
+        async def free_callback(interaction: discord.Interaction):
+            if interaction.data["custom_id"] == "join_team_1":
+                if interaction.user in self.team1:
+                    self.team1.remove(interaction.user)
+                elif interaction.user in self.team2:
+                    self.team2.remove(interaction.user)
+                    self.team1.append(interaction.user)
+                else:
+                    self.team1.append(interaction.user)
+
+                await interaction.message.edit(
+                    embed=FreeEmbed(
+                        [Player(self.bot, p.id, False) for p in self.team1],
+                        [Player(self.bot, p.id, False) for p in self.team2]),
+                    view=self)
+                await interaction.response.defer()
+                return
+
+            if interaction.data["custom_id"] == "join_team_2":
+                if interaction.user in self.team2:
+                    self.team2.remove(interaction.user)
+                elif interaction.user in self.team1:
+                    self.team1.remove(interaction.user)
+                    self.team2.append(interaction.user)
+                else:
+                    self.team2.append(interaction.user)
+
+                await interaction.message.edit(
+                    embed=FreeEmbed(
+                        [Player(self.bot, p.id, False) for p in self.team1],
+                        [Player(self.bot, p.id, False) for p in self.team2]),
+                    view=self)
+                await interaction.response.defer()
+                return
+
+            if interaction.data["custom_id"] == "start":
+                if len(self.team1) < 1 or len(self.team2) < 1:
+                    await interaction.response.send_message("Not enough players in queue", ephemeral=True)
+                    return
+                player_team_1 = [Player(self.bot, p.id, False)
+                                 for p in self.team1]
+                player_team_2 = [Player(self.bot, p.id, False)
+                                 for p in self.team2]
+
+                match = CustomMatch(self.bot, interaction.user,
+                                    player_team_1, player_team_2)
+
+                embed = MatchEmbed(player_team_1, player_team_2)
+                view = MatchView(self.bot, match, embed)
+
+                await interaction.channel.send(embed=embed, view=view)
+                await interaction.message.delete()
+                await interaction.response.defer()
+                return
+
+            if interaction.data["custom_id"] == "discard":
+                await interaction.message.delete()
+                return
+
+        for button in self.buttons:
+            button.callback = free_callback
             self.add_item(button)
 
 

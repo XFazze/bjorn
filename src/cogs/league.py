@@ -19,6 +19,8 @@ from lib.league import (
     QueueEmbed,
     PlayerMatchesView,
     Match,
+    FreeEmbed,
+    FreeView
 )
 
 
@@ -99,6 +101,12 @@ class league(commands.Cog):
     async def queue(self, ctx: commands.Context):
         embed = QueueEmbed([])
         view = QueueView(self.bot)
+        await ctx.reply(embed=embed, view=view)
+
+    @league.command(name="free_teams", description="Create your own teams.")
+    async def free_teams(self, ctx: commands.Context):
+        embed = FreeEmbed([], [])
+        view = FreeView(self.bot)
         await ctx.reply(embed=embed, view=view)
 
     @league.command(
@@ -202,7 +210,8 @@ class league(commands.Cog):
         players = self.db.get_all_players()
 
         embed = discord.Embed(title=f"Players", color=0x00FF42)
-        embed.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
+        embed.add_field(name="Name", value="\n".join(
+            [p.discord_name for p in players]))
         embed.add_field(
             name="Win rate", value="\n".join([f"{p.win_rate:.1f}%" for p in players])
         )
@@ -274,7 +283,8 @@ class league(commands.Cog):
                 name=f"Team 2",
                 value=f"\n".join([f"{p.discord_name}" for p in match.team2]),
             )
-            embed.add_field(name=f"Date", value=f"{match.timestamp[:10]}", inline=False)
+            embed.add_field(
+                name=f"Date", value=f"{match.timestamp[:10]}", inline=False)
             embed.add_field(name=f"Result", value=f"Team {match.winner}")
             embeds.append(embed)
 
