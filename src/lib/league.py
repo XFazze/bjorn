@@ -704,7 +704,7 @@ def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
     team2 = []
     sorted(players, key=lambda player: -player.mmr)
     while len(players) != 0:
-        if sum([p.mmr for p in team1]) > sum([p.mmr for p in team2]):
+        if sum([p.mmr for p in team1]) > sum([p.mmr for p in team2]) and len(team2) < 5:
             team2.append(players.pop())
         else:
             team1.append(players.pop())
