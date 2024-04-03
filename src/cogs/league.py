@@ -88,7 +88,7 @@ class league(commands.Cog):
         custom_match = CustomMatch(self.bot, ctx.author, team1, team2)
 
         embed = MatchEmbed(team1, team2)
-        view = MatchView(custom_match, embed)
+        view = MatchView(self.bot, custom_match, embed)
 
         await ctx.reply(embed=embed, view=view)
 
