@@ -299,21 +299,21 @@ class CustomMatch:
     def finish_match(self, winner: int):
         if winner == 1:
             for player in self.team1:
-                player.mmr += 10 * self.mmr_diff_scaled
+                player.mmr += 20 * self.mmr_diff_scaled
                 player.wins += 1
 
             for player in self.team2:
-                player.mmr -= 10 * self.mmr_diff_scaled
+                player.mmr -= 20 * self.mmr_diff_scaled
                 player.losses += 1
 
         elif winner == 2:
 
             for player in self.team1:
-                player.mmr -= 10 * self.mmr_diff_scaled
+                player.mmr -= 20 * self.mmr_diff_scaled
                 player.losses += 1
 
             for player in self.team2:
-                player.mmr += 10 * self.mmr_diff_scaled
+                player.mmr += 20 * self.mmr_diff_scaled
                 player.wins += 1
 
         [player.update() for player in self.team1 + self.team2]
