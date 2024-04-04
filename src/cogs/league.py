@@ -229,7 +229,7 @@ class league(commands.Cog):
             name="Matches", value="\n".join([f"{len(p.matches)}" for p in players])
         )
         embed.add_field(
-            name="MMR", value="\n".join([f"{len(p.mmr)}" for p in players])
+            name="MMR", value="\n".join([f"{p.mmr}" for p in players])
         )
 
         await ctx.reply(embed=embed)
