@@ -29,7 +29,10 @@ class league(commands.Cog):
         self.bot = bot
         self.db = Database(bot, "data/league.sqlite")
 
-    @commands.hybrid_group(name="league", description="League commands")
+    @commands.hybrid_group(
+        name="league",
+        description="League commands"
+    )
     async def league(self, ctx: commands.Context):
         pass
 
@@ -37,7 +40,6 @@ class league(commands.Cog):
         name="customs",
         description="Creates a league custom match instance with teams from the current voice channel.",
     )
-    @permissions.admin()
     @permissions.voice()
     async def customs(
         self,
@@ -103,7 +105,10 @@ class league(commands.Cog):
         view = QueueView(self.bot)
         await ctx.reply(embed=embed, view=view)
 
-    @league.command(name="free_teams", description="Create your own teams.")
+    @league.command(
+        name="free_teams",
+        description="Create your own teams."
+    )
     async def free_teams(self, ctx: commands.Context):
         embed = FreeEmbed([], [])
         view = FreeView(self.bot)
@@ -113,7 +118,6 @@ class league(commands.Cog):
         name="arena",
         description="Creates arena with teams from the current voice channel.",
     )
-    @permissions.admin()
     @permissions.voice()
     async def arena(
         self,
@@ -169,7 +173,8 @@ class league(commands.Cog):
         await ctx.reply(embed=embed)
 
     @league.command(
-        name="setrank", description=f"Sets a player's rank to a given rank or mmr"
+        name="setrank",
+        description=f"Sets a player's rank to a given rank or mmr"
     )
     @permissions.admin()
     async def set_rank(
@@ -195,8 +200,10 @@ class league(commands.Cog):
             )
         )
 
-    @league.command(name="getmmr", description=f"Gets a player's mmr")
-    @permissions.admin()
+    @league.command(
+        name="getmmr",
+        description=f"Gets a player's mmr"
+    )
     async def get_mmr(self, ctx: commands.Context, member: discord.Member):
         player = Player(self.bot, member.id)
         await ctx.reply(
@@ -205,7 +212,10 @@ class league(commands.Cog):
             )
         )
 
-    @league.command(name="players", description=f"Displays all players.")
+    @league.command(
+        name="players",
+        description=f"Displays all players."
+    )
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
 
@@ -218,15 +228,22 @@ class league(commands.Cog):
         embed.add_field(
             name="Matches", value="\n".join([f"{len(p.matches)}" for p in players])
         )
+        embed.add_field(
+            name="MMR", value="\n".join([f"{len(p.mmr)}" for p in players])
+        )
 
         await ctx.reply(embed=embed)
 
-    @league.group(name="remove", description=f"Remove commands")
+    @league.group(
+        name="remove",
+        description=f"Remove commands"
+    )
     async def remove(self, ctx: commands.Context):
         pass
 
     @remove.command(
-        name="player", description=f"Removes a player record from the database."
+        name="player",
+        description=f"Removes a player record from the database."
     )
     @permissions.admin()
     async def player(self, ctx: commands.Context, member: discord.Member):
@@ -239,7 +256,8 @@ class league(commands.Cog):
         )
 
     @remove.command(
-        name="match", description=f"Removes a match record from the database."
+        name="match",
+        description=f"Removes a match record from the database."
     )
     @permissions.admin()
     async def match(self, ctx: commands.Context, match_id: int):
@@ -265,15 +283,10 @@ class league(commands.Cog):
 
         for i, match in enumerate(matches):
             match: Match
-            if player:
-                embed = discord.Embed(
-                    title=f"{player.discord_name}\t({i+1}/{len(matches)})",
-                    color=0x00FF42,
-                )
-            else:
-                embed = discord.Embed(
-                    title=f"{match.match_id}\t({i+1}/{len(matches)})", color=0x00FF42
-                )
+            embed = discord.Embed(
+                title=f"{match.match_id}\t({i+1}/{len(matches)})",
+                color=0x00FF42
+            )
 
             embed.add_field(
                 name=f"Team 1",
