@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 import random
+import math
 from typing import Optional, List, Union, Literal
 
 import lib.persmissions as permissions
@@ -20,7 +21,9 @@ from lib.league import (
     PlayerMatchesView,
     Match,
     FreeEmbed,
-    FreeView
+    FreeView,
+    PlayersEmbed,
+    PlayersView
 )
 
 
@@ -172,17 +175,24 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @league.command(
-        name="setrank",
-        description=f"Sets a player's rank to a given rank or mmr"
+    @league.group(
+        name="rating",
+        description="Various mmr related commands"
+    )
+    async def rating(self, ctx: commands.Context):
+        pass
+
+    @rating.command(
+        name="set",
+        description="Sets a player's rank to a given rank or mmr"
     )
     @permissions.admin()
-    async def set_rank(
+    async def mmr_set(
         self,
         ctx: commands.Context,
         member: discord.Member,
         rank: Optional[ranks_type],
-        mmr: Optional[int],
+        mmr: Optional[int]
     ):
         if rank is not None:
             mmr = ranks_mmr[rank]
@@ -200,17 +210,53 @@ class league(commands.Cog):
             )
         )
 
-    @league.command(
-        name="getmmr",
-        description=f"Gets a player's mmr"
+    @rating.command(
+        name="get",
+        description="Get rank or mmr"
     )
-    async def get_mmr(self, ctx: commands.Context, member: discord.Member):
+    async def mmr_get(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+        rating_type: Literal["Rank", "MMR"]
+    ):
         player = Player(self.bot, member.id)
-        await ctx.reply(
-            embed=discord.Embed(
-                title=f"{member.name}'s mmr is {player.mmr}", color=0x00FF42
+
+        if rating_type == "Rank":
+            for (i, j) in ranks_mmr.items():
+                if player.mmr < j:
+                    rank = i
+                    break
+
+            await ctx.reply(
+                embed=discord.Embed(
+                    title=f"{member.name}'s current rank is close to {rank}", color=0x00FF42
+                )
             )
+
+        elif rating_type == "MMR":
+            await ctx.reply(
+                embed=discord.Embed(
+                    title=f"{member.name}'s mmr is {player.mmr}", color=0x00FF42
+                )
+            )
+
+    @rating.command(
+        name="list",
+        description="Get all ranks and equivalent MMRs"
+    )
+    async def mmr_list(self, ctx: commands.Context):
+        embed = discord.Embed(title="League ranks")
+        embed.add_field(
+            name="Rank",
+            value="\n".join([i for i in ranks_mmr.keys()])
         )
+        embed.add_field(
+            name="MMR",
+            value="\n".join([str(i) for i in ranks_mmr.values()])
+        )
+
+        await ctx.reply(embed=embed)
 
     @league.command(
         name="players",
@@ -219,20 +265,10 @@ class league(commands.Cog):
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
 
-        embed = discord.Embed(title=f"Players", color=0x00FF42)
-        embed.add_field(name="Name", value="\n".join(
-            [p.discord_name for p in players]))
-        embed.add_field(
-            name="Win rate", value="\n".join([f"{p.win_rate:.1f}%" for p in players])
-        )
-        embed.add_field(
-            name="Matches", value="\n".join([f"{len(p.matches)}" for p in players])
-        )
-        embed.add_field(
-            name="MMR", value="\n".join([f"{p.mmr}" for p in players])
-        )
+        embed = PlayersEmbed(players)
+        view = PlayersView(players)
 
-        await ctx.reply(embed=embed)
+        await ctx.reply(embed=embed, view=view)
 
     @league.group(
         name="remove",
@@ -291,6 +327,10 @@ class league(commands.Cog):
             embed.add_field(
                 name=f"Team 1",
                 value=f"\n".join([f"{p.discord_name}" for p in match.team1]),
+            )
+            embed.add_field(
+                name=f"{math.ceil(match.mmr_diff)}",
+                value=""
             )
             embed.add_field(
                 name=f"Team 2",
