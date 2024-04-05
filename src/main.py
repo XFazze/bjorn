@@ -10,6 +10,7 @@ import logging
 load_dotenv(".env")
 load_dotenv(".env.secret")
 
+
 if os.getenv("DEV") != "TRUE":
     discord.utils.setup_logging(level=logging.INFO, root=False)
 else:

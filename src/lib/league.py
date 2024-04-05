@@ -4,16 +4,12 @@ import random
 import discord
 from discord.ext import commands
 from typing import Optional, Literal
+import math
 
 import lib.general as general
 
 
 ranks_mmr = {
-    "Iron 4": 500,
-    "Iron 3": 550,
-    "Iron 2": 600,
-    "Iron 1": 650,
-    "Bronze 4": 700,
     "Bronze 3": 750,
     "Bronze 2": 800,
     "Bronze 1": 850,
@@ -38,14 +34,10 @@ ranks_mmr = {
     "Diamond 2": 1800,
     "Diamond 1": 1850,
     "Master": 1900,
-    "Grandmaster": 1950,
-    "Challenger": 2500,
+    "Grandmaster": 1950
 }
 
 ranks_type = Literal[
-    "Iron 2",
-    "Iron 1",
-    "Bronze 4",
     "Bronze 3",
     "Bronze 2",
     "Bronze 1",
@@ -70,8 +62,7 @@ ranks_type = Literal[
     "Diamond 2",
     "Diamond 1",
     "Master",
-    "Grandmaster",
-    "Challenger",
+    "Grandmaster"
 ]
 
 
@@ -248,6 +239,64 @@ class Database(general.Database):
         self.connection.commit()
 
 
+class PlayersEmbed(discord.Embed):
+    def __init__(self, players: list[Player]):
+        super().__init__(title=f"Players", color=0x00FF42)
+
+        self.add_field(name="Name", value="\n".join(
+            [p.discord_name for p in players]))
+        self.add_field(
+            name="Win rate", value="\n".join([f"{p.win_rate:.1f}%" for p in players])
+        )
+        self.add_field(
+            name="Matches", value="\n".join([f"{len(p.matches)}" for p in players])
+        )
+
+
+class PlayersExtEmbed(discord.Embed):
+    def __init__(self, players: list[Player]):
+        super().__init__(title=f"Players", color=0x00FF42)
+
+        self.add_field(name="Name", value="\n".join(
+            [p.discord_name for p in players]))
+
+        self.add_field(
+            name="MMR", value="\n".join([f"{p.mmr}" for p in players])
+        )
+
+
+class PlayersView(discord.ui.View):
+    def __init__(self, players):
+        super().__init__(timeout=7200)
+
+        self.current_embed_index = 0
+        self.current_embed = None
+
+        self.view_button = discord.ui.Button(
+            label="Extended",
+            style=discord.ButtonStyle.blurple,
+            custom_id="view"
+        )
+
+        async def view_callback(interaction: discord.Interaction):
+            if interaction.data["custom_id"] == "view":
+                if self.current_embed_index == 0:
+                    self.current_embed = PlayersExtEmbed(players)
+                    self.current_embed_index = 1
+                    self.view_button.label = "Normal"
+                else:
+                    self.current_embed = PlayersEmbed(players)
+                    self.current_embed_index = 0
+                    self.view_button.label = "Extended"
+
+                await interaction.message.edit(embed=self.current_embed, view=self)
+                await interaction.response.defer()
+                return
+
+        self.view_button.callback = view_callback
+        self.add_item(self.view_button)
+
+
 class CustomMatch:
     def __init__(
         self, bot, creator: discord.Member, team1: list[Player], team2: list[Player]
@@ -300,20 +349,24 @@ class CustomMatch:
         if winner == 1:
             for player in self.team1:
                 player.mmr += 20 * self.mmr_diff_scaled
+                player.mmr = math.ceil(player.mmr)
                 player.wins += 1
 
             for player in self.team2:
                 player.mmr -= 20 * self.mmr_diff_scaled
+                player.mmr = math.ceil(player.mmr)
                 player.losses += 1
 
         elif winner == 2:
 
             for player in self.team1:
                 player.mmr -= 20 * self.mmr_diff_scaled
+                player.mmr = math.ceil(player.mmr)
                 player.losses += 1
 
             for player in self.team2:
                 player.mmr += 20 * self.mmr_diff_scaled
+                player.mmr = math.ceil(player.mmr)
                 player.wins += 1
 
         [player.update() for player in self.team1 + self.team2]
@@ -344,7 +397,7 @@ class MatchEmbed(discord.Embed):
         )
 
 
-class MatchView(discord.ui.View):
+class MatchView(discord.ui.View):  # ändra till playersembed
     def __init__(self, bot, match: CustomMatch, base_embed: discord.Embed):
         super().__init__(timeout=7200)
 
@@ -387,20 +440,7 @@ class MatchView(discord.ui.View):
                         in [i.discord_id for i in match.team1 + match.team2]
                     ]
 
-                    embed = discord.Embed(title=f"Players", color=0x228888)
-                    embed.add_field(
-                        name="Name", value="\n".join([p.discord_name for p in players])
-                    )
-                    embed.add_field(
-                        name="Win rate",
-                        value="\n".join(
-                            [f"{p.win_rate:.1f}%" for p in players]),
-                    )
-                    embed.add_field(
-                        name="Matches",
-                        value="\n".join(
-                            [f"{len(p.matches)}" for p in players]),
-                    )
+                    embed = PlayersEmbed(players)
 
                     self.buttons[2].label = "Teams"
 
@@ -692,7 +732,6 @@ class PlayerMatchesView(discord.ui.View):
                 await interaction.response.defer()
 
             await interaction.message.edit(embed=self.current_embed, view=self)
-            await interaction.response.defer()
 
         for button in self.buttons:
             button.callback = callback
