@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import datetime
 import random
@@ -597,6 +598,18 @@ class QueueView(discord.ui.View):
                     content="".join([p.mention for p in self.queue])
                 )
                 await interaction.channel.send(embed=embed, view=view)
+
+                bettervc_category_obj: discord.CategoryChannel = self.bot.get_channel(
+                    int(os.getenv("BETTERVC_CATEGORY_ID"))
+                )
+                if bettervc_category_obj:
+                    bettervc_channels = bettervc_category_obj.channels
+                    for channel in bettervc_channels:
+                        if len(channel.members) == 0 and channel.name[0] != "|":
+                            for p in team1:
+                                if p.discord_member_object.voice:
+                                    await p.discord_member_object.move_to(channel)
+                            break
 
             await interaction.response.defer()
 
