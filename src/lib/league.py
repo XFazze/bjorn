@@ -71,7 +71,7 @@ class Tournament:
 
 
 class Player:
-    def __init__(self, bot, discord_id: int, get_matches=True):
+    def __init__(self, bot: commands.Bot, discord_id: int, get_matches=True):
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
 
@@ -80,6 +80,9 @@ class Player:
         ).fetchone()
 
         self.discord_id = discord_id
+        self.discord_member_object = next(
+            (m for m in self.bot.get_all_members() if m.id == discord_id), None
+        )
         self.discord_name = self.bot.get_user(discord_id).name
         self.mmr = existing_player[1] if existing_player else 1000
         self.wins = existing_player[2] if existing_player else 0
@@ -517,7 +520,13 @@ class QueueEmbed(discord.Embed):
         self.add_field(name="Players", value="\n".join([p.discord_name for p in queue]))
         self.add_field(
             name="VC",
-            value="\n".join([m for m in vc_members_names if m not in [p.discord_name for p in queue]]),
+            value="\n".join(
+                [
+                    m
+                    for m in vc_members_names
+                    if m not in [p.discord_name for p in queue]
+                ]
+            ),
         )
 
 
@@ -542,7 +551,7 @@ class QueueView(discord.ui.View):
             ),
         ]
 
-        self.queue = []
+        self.queue: list[discord.abc.User | discord.abc.Member] = []
 
         async def queue_callback(interaction: discord.Interaction):
             if interaction.data["custom_id"] == "queue":
@@ -553,22 +562,22 @@ class QueueView(discord.ui.View):
 
                 vc_members_names = []
                 if interaction.user.voice:
-                    vc_members_names = [m.name for m in interaction.user.voice.channel.members]
+                    vc_members_names = [
+                        m.name for m in interaction.user.voice.channel.members
+                    ]
                 await interaction.message.edit(
                     embed=QueueEmbed(
-                        [Player(self.bot, p.id, False) for p in self.queue], 
-                        vc_members_names=vc_members_names
+                        [Player(self.bot, p.id, False) for p in self.queue],
+                        vc_members_names=vc_members_names,
                     ),
                     view=self,
                 )
-                await interaction.response.defer()
-                return
 
             if interaction.data["custom_id"] == "discard":
                 await interaction.message.delete()
                 return
 
-            if interaction.data["custom_id"] == "start":
+            if interaction.data["custom_id"] == "start" or len(self.queue) == 10:
                 if len(self.queue) < 2:
                     await interaction.response.send_message(
                         "Not enough players in queue", ephemeral=True
@@ -584,9 +593,12 @@ class QueueView(discord.ui.View):
                 embed = MatchEmbed(team1, team2)
                 view = MatchView(self.bot, match, embed)
 
+                await interaction.channel.send(
+                    content="".join([p.mention for p in self.queue])
+                )
                 await interaction.channel.send(embed=embed, view=view)
-                await interaction.response.defer()
-                return
+
+            await interaction.response.defer()
 
         for button in self.buttons:
             button.callback = queue_callback
