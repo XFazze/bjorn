@@ -122,7 +122,7 @@ class Player:
     def get_lp(self):
         rank = self.get_rank()
         lp = ranks_mmr[rank] - self.mmr
-        return lp*2
+        return 100-lp*2
 
 
 class Match:
