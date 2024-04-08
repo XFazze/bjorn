@@ -34,7 +34,7 @@ ranks_mmr = {
     "Diamond 2": 1800,
     "Diamond 1": 1850,
     "Master": 1900,
-    "Grandmaster": 1950
+    "Grandmaster": 1950,
 }
 
 ranks_type = Literal[
@@ -62,7 +62,7 @@ ranks_type = Literal[
     "Diamond 2",
     "Diamond 1",
     "Master",
-    "Grandmaster"
+    "Grandmaster",
 ]
 
 
@@ -204,10 +204,8 @@ class Database(general.Database):
         return [Player(self.bot, i[0]) for i in res]
 
     def insert_match(self, match: Match):
-        team1_string = "".join(
-            [str(player.discord_id) + " " for player in match.team1])
-        team2_string = "".join(
-            [str(player.discord_id) + " " for player in match.team2])
+        team1_string = "".join([str(player.discord_id) + " " for player in match.team1])
+        team2_string = "".join([str(player.discord_id) + " " for player in match.team2])
 
         insertion = f"INSERT INTO match (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
         self.cursor.execute(
@@ -230,8 +228,7 @@ class Database(general.Database):
         self.connection.commit()
 
     def remove_player(self, player: discord.Member):
-        self.cursor.execute(
-            f"DELETE FROM player WHERE discord_id = {player.id}")
+        self.cursor.execute(f"DELETE FROM player WHERE discord_id = {player.id}")
         self.connection.commit()
 
     def remove_match(self, match_id: int):
@@ -243,8 +240,7 @@ class PlayersEmbed(discord.Embed):
     def __init__(self, players: list[Player]):
         super().__init__(title=f"Players", color=0x00FF42)
 
-        self.add_field(name="Name", value="\n".join(
-            [p.discord_name for p in players]))
+        self.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
         self.add_field(
             name="Win rate", value="\n".join([f"{p.win_rate:.1f}%" for p in players])
         )
@@ -257,12 +253,9 @@ class PlayersExtEmbed(discord.Embed):
     def __init__(self, players: list[Player]):
         super().__init__(title=f"Players", color=0x00FF42)
 
-        self.add_field(name="Name", value="\n".join(
-            [p.discord_name for p in players]))
+        self.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
 
-        self.add_field(
-            name="MMR", value="\n".join([f"{p.mmr}" for p in players])
-        )
+        self.add_field(name="MMR", value="\n".join([f"{p.mmr}" for p in players]))
 
 
 class PlayersView(discord.ui.View):
@@ -273,9 +266,7 @@ class PlayersView(discord.ui.View):
         self.current_embed = None
 
         self.view_button = discord.ui.Button(
-            label="Extended",
-            style=discord.ButtonStyle.blurple,
-            custom_id="view"
+            label="Extended", style=discord.ButtonStyle.blurple, custom_id="view"
         )
 
         async def view_callback(interaction: discord.Interaction):
@@ -520,11 +511,14 @@ class MatchViewDone(discord.ui.View):
 
 
 class QueueEmbed(discord.Embed):
-    def __init__(self, queue: list[Player]):
+    def __init__(self, queue: list[Player], vc_members_names: list[str]):
         super().__init__(title=f"Queue {len(queue)}p", color=0x00FF42)
 
-        self.add_field(name="Players", value="\n".join(
-            [p.discord_name for p in queue]))
+        self.add_field(name="Players", value="\n".join([p.discord_name for p in queue]))
+        self.add_field(
+            name="VC",
+            value="\n".join([m for m in vc_members_names if m not in [p.discord_name for p in queue]]),
+        )
 
 
 class QueueView(discord.ui.View):
@@ -557,9 +551,13 @@ class QueueView(discord.ui.View):
                 else:
                     self.queue.append(interaction.user)
 
+                vc_members_names = []
+                if interaction.user.voice:
+                    vc_members_names = [m.name for m in interaction.user.voice.channel.members]
                 await interaction.message.edit(
                     embed=QueueEmbed(
-                        [Player(self.bot, p.id, False) for p in self.queue]
+                        [Player(self.bot, p.id, False) for p in self.queue], 
+                        vc_members_names=vc_members_names
                     ),
                     view=self,
                 )
@@ -599,10 +597,8 @@ class FreeEmbed(discord.Embed):
     def __init__(self, team1: list[Player], team2: list[Player]):
         super().__init__(title="Create teams", color=0x00FF42)
 
-        self.add_field(name="Team 1", value='\n'.join(
-            [p.discord_name for p in team1]))
-        self.add_field(name="Team 2", value='\n'.join(
-            [p.discord_name for p in team2]))
+        self.add_field(name="Team 1", value="\n".join([p.discord_name for p in team1]))
+        self.add_field(name="Team 2", value="\n".join([p.discord_name for p in team2]))
 
 
 class FreeView(discord.ui.View):
@@ -612,13 +608,27 @@ class FreeView(discord.ui.View):
 
         self.buttons = [
             discord.ui.Button(
-                label="Join team 1", style=discord.ButtonStyle.blurple, custom_id="join_team_1"),
+                label="Join team 1",
+                style=discord.ButtonStyle.blurple,
+                custom_id="join_team_1",
+            ),
             discord.ui.Button(
-                label="Join team 2", style=discord.ButtonStyle.blurple, custom_id="join_team_2"),
+                label="Join team 2",
+                style=discord.ButtonStyle.blurple,
+                custom_id="join_team_2",
+            ),
             discord.ui.Button(
-                label="Start match", style=discord.ButtonStyle.green, custom_id="start", row=2),
+                label="Start match",
+                style=discord.ButtonStyle.green,
+                custom_id="start",
+                row=2,
+            ),
             discord.ui.Button(
-                label="Discard", style=discord.ButtonStyle.red, custom_id="discard", row=2)
+                label="Discard",
+                style=discord.ButtonStyle.red,
+                custom_id="discard",
+                row=2,
+            ),
         ]
 
         self.team1 = []
@@ -637,8 +647,10 @@ class FreeView(discord.ui.View):
                 await interaction.message.edit(
                     embed=FreeEmbed(
                         [Player(self.bot, p.id, False) for p in self.team1],
-                        [Player(self.bot, p.id, False) for p in self.team2]),
-                    view=self)
+                        [Player(self.bot, p.id, False) for p in self.team2],
+                    ),
+                    view=self,
+                )
                 await interaction.response.defer()
                 return
 
@@ -654,22 +666,25 @@ class FreeView(discord.ui.View):
                 await interaction.message.edit(
                     embed=FreeEmbed(
                         [Player(self.bot, p.id, False) for p in self.team1],
-                        [Player(self.bot, p.id, False) for p in self.team2]),
-                    view=self)
+                        [Player(self.bot, p.id, False) for p in self.team2],
+                    ),
+                    view=self,
+                )
                 await interaction.response.defer()
                 return
 
             if interaction.data["custom_id"] == "start":
                 if len(self.team1) < 1 or len(self.team2) < 1:
-                    await interaction.response.send_message("Not enough players in queue", ephemeral=True)
+                    await interaction.response.send_message(
+                        "Not enough players in queue", ephemeral=True
+                    )
                     return
-                player_team_1 = [Player(self.bot, p.id, False)
-                                 for p in self.team1]
-                player_team_2 = [Player(self.bot, p.id, False)
-                                 for p in self.team2]
+                player_team_1 = [Player(self.bot, p.id, False) for p in self.team1]
+                player_team_2 = [Player(self.bot, p.id, False) for p in self.team2]
 
-                match = CustomMatch(self.bot, interaction.user,
-                                    player_team_1, player_team_2)
+                match = CustomMatch(
+                    self.bot, interaction.user, player_team_1, player_team_2
+                )
 
                 embed = MatchEmbed(player_team_1, player_team_2)
                 view = MatchView(self.bot, match, embed)

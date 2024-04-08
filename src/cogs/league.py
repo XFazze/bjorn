@@ -23,7 +23,7 @@ from lib.league import (
     FreeEmbed,
     FreeView,
     PlayersEmbed,
-    PlayersView
+    PlayersView,
 )
 
 
@@ -32,10 +32,7 @@ class league(commands.Cog):
         self.bot = bot
         self.db = Database(bot, "data/league.sqlite")
 
-    @commands.hybrid_group(
-        name="league",
-        description="League commands"
-    )
+    @commands.hybrid_group(name="league", description="League commands")
     async def league(self, ctx: commands.Context):
         pass
 
@@ -104,14 +101,16 @@ class league(commands.Cog):
         description="Creates a customs queue to automatically be placed in fair teams",
     )
     async def queue(self, ctx: commands.Context):
-        embed = QueueEmbed([])
+        vc_members_names = []
+        if ctx.author.voice:
+            vc_members_names = [
+                member.name for member in ctx.author.voice.channel.members
+            ]
+        embed = QueueEmbed([], vc_members_names)
         view = QueueView(self.bot)
         await ctx.reply(embed=embed, view=view)
 
-    @league.command(
-        name="free_teams",
-        description="Create your own teams."
-    )
+    @league.command(name="free_teams", description="Create your own teams.")
     async def free_teams(self, ctx: commands.Context):
         embed = FreeEmbed([], [])
         view = FreeView(self.bot)
@@ -175,16 +174,12 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @league.group(
-        name="rating",
-        description="Various mmr related commands"
-    )
+    @league.group(name="rating", description="Various mmr related commands")
     async def rating(self, ctx: commands.Context):
         pass
 
     @rating.command(
-        name="set",
-        description="Sets a player's rank to a given rank or mmr"
+        name="set", description="Sets a player's rank to a given rank or mmr"
     )
     @permissions.admin()
     async def mmr_set(
@@ -192,7 +187,7 @@ class league(commands.Cog):
         ctx: commands.Context,
         member: discord.Member,
         rank: Optional[ranks_type],
-        mmr: Optional[int]
+        mmr: Optional[int],
     ):
         if rank is not None:
             mmr = ranks_mmr[rank]
@@ -210,27 +205,25 @@ class league(commands.Cog):
             )
         )
 
-    @rating.command(
-        name="get",
-        description="Get rank or mmr"
-    )
+    @rating.command(name="get", description="Get rank or mmr")
     async def mmr_get(
         self,
         ctx: commands.Context,
         member: discord.Member,
-        rating_type: Literal["Rank", "MMR"]
+        rating_type: Literal["Rank", "MMR"],
     ):
         player = Player(self.bot, member.id)
 
         if rating_type == "Rank":
-            for (i, j) in ranks_mmr.items():
+            for i, j in ranks_mmr.items():
                 if player.mmr < j:
                     rank = i
                     break
 
             await ctx.reply(
                 embed=discord.Embed(
-                    title=f"{member.name}'s current rank is close to {rank}", color=0x00FF42
+                    title=f"{member.name}'s current rank is close to {rank}",
+                    color=0x00FF42,
                 )
             )
 
@@ -241,27 +234,17 @@ class league(commands.Cog):
                 )
             )
 
-    @rating.command(
-        name="list",
-        description="Get all ranks and equivalent MMRs"
-    )
+    @rating.command(name="list", description="Get all ranks and equivalent MMRs")
     async def mmr_list(self, ctx: commands.Context):
         embed = discord.Embed(title="League ranks")
+        embed.add_field(name="Rank", value="\n".join([i for i in ranks_mmr.keys()]))
         embed.add_field(
-            name="Rank",
-            value="\n".join([i for i in ranks_mmr.keys()])
-        )
-        embed.add_field(
-            name="MMR",
-            value="\n".join([str(i) for i in ranks_mmr.values()])
+            name="MMR", value="\n".join([str(i) for i in ranks_mmr.values()])
         )
 
         await ctx.reply(embed=embed)
 
-    @league.command(
-        name="players",
-        description=f"Displays all players."
-    )
+    @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
 
@@ -270,16 +253,12 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed, view=view)
 
-    @league.group(
-        name="remove",
-        description=f"Remove commands"
-    )
+    @league.group(name="remove", description=f"Remove commands")
     async def remove(self, ctx: commands.Context):
         pass
 
     @remove.command(
-        name="player",
-        description=f"Removes a player record from the database."
+        name="player", description=f"Removes a player record from the database."
     )
     @permissions.admin()
     async def player(self, ctx: commands.Context, member: discord.Member):
@@ -292,8 +271,7 @@ class league(commands.Cog):
         )
 
     @remove.command(
-        name="match",
-        description=f"Removes a match record from the database."
+        name="match", description=f"Removes a match record from the database."
     )
     @permissions.admin()
     async def match(self, ctx: commands.Context, match_id: int):
@@ -320,24 +298,19 @@ class league(commands.Cog):
         for i, match in enumerate(matches):
             match: Match
             embed = discord.Embed(
-                title=f"{match.match_id}\t({i+1}/{len(matches)})",
-                color=0x00FF42
+                title=f"{match.match_id}\t({i+1}/{len(matches)})", color=0x00FF42
             )
 
             embed.add_field(
                 name=f"Team 1",
                 value=f"\n".join([f"{p.discord_name}" for p in match.team1]),
             )
-            embed.add_field(
-                name=f"{math.ceil(match.mmr_diff)}",
-                value=""
-            )
+            embed.add_field(name=f"{math.ceil(match.mmr_diff)}", value="")
             embed.add_field(
                 name=f"Team 2",
                 value=f"\n".join([f"{p.discord_name}" for p in match.team2]),
             )
-            embed.add_field(
-                name=f"Date", value=f"{match.timestamp[:10]}", inline=False)
+            embed.add_field(name=f"Date", value=f"{match.timestamp[:10]}", inline=False)
             embed.add_field(name=f"Result", value=f"Team {match.winner}")
             embeds.append(embed)
 
