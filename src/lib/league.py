@@ -306,38 +306,38 @@ class PlayersView(discord.ui.View):
             if interaction.data["custom_id"] == "sort":
                 if self.current_embed_index == 0 and self.current_sort_embed_index == 0:
                     self.sort_button.label = "Name"
-                    players = sorted(players, key=lambda p: -len(p.mmr))
+                    players = sorted(players, key=lambda p: -p.mmr)
                     self.current_embed = PlayersExtEmbed(players)
                     self.current_sort_embed_index = 1
 
                 if self.current_embed_index == 0 and self.current_sort_embed_index == 1:
                     self.sort_button.label = "MMR"
-                    players = sorted(players, key=lambda p: -len(p.discord_name))
+                    players = sorted(players, key=lambda p: -p.discord_name)
                     self.current_embed = PlayersExtEmbed(players)
                     self.current_sort_embed_index = 0
 
 
                 if self.current_embed_index == 1 and self.current_sort_embed_index == 1:
                     self.sort_button.label = "Winrate"
-                    players = sorted(players, key=lambda p: -len(p.discord_name))
+                    players = sorted(players, key=lambda p: -p.discord_name)
                     self.current_embed = PlayersEmbed(players)
                     self.current_sort_embed_index = 2
 
                 if self.current_embed_index == 1 and self.current_sort_embed_index == 2:
                     self.sort_button.label = "Matches"
-                    players = sorted(players, key=lambda p: -len(p.win_rate))
+                    players = sorted(players, key=lambda p: -p.win_rate)
                     self.current_embed = PlayersEmbed(players)
                     self.current_sort_embed_index = 3
 
                 if self.current_embed_index == 1 and self.current_sort_embed_index == 3:
                     self.sort_button.label = "Name"
-                    players = sorted(players, key=lambda p: -len(p.matches))
+                    players = sorted(players, key=lambda p: -p.matches)
                     self.current_embed = PlayersEmbed(players)
                     self.current_sort_embed_index = 0
 
                 else:
                     self.sort_button.label = "something went wrong"
-                    players = sorted(players, key=lambda p: -len(p.discord_name))
+                    players = sorted(players, key=lambda p: -p.discord_name)
                     self.current_embed = PlayersEmbed(players)
                     self.current_sort_embed_index = 0
                 
