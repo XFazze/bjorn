@@ -135,7 +135,7 @@ class Player:
             if self.wins + self.losses > 0
             else 0
         )
-        self.matches = self.db.get_matches(discord_id) if get_matches else []
+        self.matches: list[Match] = self.db.get_matches(discord_id) if get_matches else []
 
         if not existing_player:
             self.db.insert_player(self)
@@ -160,6 +160,15 @@ class Player:
             insertion, (self.discord_id, self.mmr, datetime.datetime.now())
         )
         self.db.connection.commit()
+    def get_rank(self):
+        for (i, j) in ranks_mmr.items():
+                if self.mmr < j:
+                    rank = i
+                    return rank
+    def get_lp(self):
+        rank = self.get_rank()
+        lp = ranks_mmr[rank] - self.mmr
+        return 100-lp*2
 
 
 class Match:
@@ -300,6 +309,9 @@ class PlayersEmbed(discord.Embed):
         self.add_field(
             name="Matches", value="\n".join([f"{len(p.matches)}" for p in players])
         )
+        self.set_footer(
+            text="Normal"
+        )
 
 
 class PlayersExtEmbed(discord.Embed):
@@ -310,35 +322,103 @@ class PlayersExtEmbed(discord.Embed):
 
         self.add_field(name="MMR", value="\n".join([f"{p.mmr}" for p in players]))
 
+        self.add_field(
+            name="Rank", value="\n".join([f"{p.get_rank()} | {p.get_lp()}%" for p in players])
+        )
+        self.set_footer(
+            text="Extended"
+        )
+
 
 class PlayersView(discord.ui.View):
     def __init__(self, players):
         super().__init__(timeout=7200)
-
+        
         self.current_embed_index = 0
+        self.current_sort_embed_index = 1
         self.current_embed = None
-
+        self.players = players
         self.view_button = discord.ui.Button(
             label="Extended", style=discord.ButtonStyle.blurple, custom_id="view"
         )
-
+        self.sort_button = discord.ui.Button(
+            label="Sort", style=discord.ButtonStyle.blurple, custom_id="sort"
+        )
+        normal_list = [sorted(self.players, key=lambda p: p.discord_name),sorted(self.players, key=lambda p: -p.win_rate),sorted(self.players, key=lambda p: -len(p.matches))]
+        extended_list = [sorted(self.players, key=lambda p: -p.mmr), sorted(self.players, key=lambda p: p.discord_name)]
+        print("inte sort", self.current_embed_index)
+        print("sort",self.current_sort_embed_index)
         async def view_callback(interaction: discord.Interaction):
             if interaction.data["custom_id"] == "view":
                 if self.current_embed_index == 0:
-                    self.current_embed = PlayersExtEmbed(players)
+                    self.players = sorted(self.players, key=lambda p: p.discord_name)
+                    self.current_embed = PlayersExtEmbed(self.players)
                     self.current_embed_index = 1
+                    self.current_sort_embed_index = 0
                     self.view_button.label = "Normal"
+                    self.sort_button.label = "Name"
+                    
+                    
                 else:
-                    self.current_embed = PlayersEmbed(players)
+                    self.players = sorted(self.players, key=lambda p: p.discord_name)
+                    self.current_embed = PlayersEmbed(self.players)
                     self.current_embed_index = 0
+                    self.current_sort_embed_index = 1
                     self.view_button.label = "Extended"
-
+                print("inte sort :", self.current_embed_index)
+                print("sort :",self.current_sort_embed_index)
                 await interaction.message.edit(embed=self.current_embed, view=self)
                 await interaction.response.defer()
                 return
+            
+            if interaction.data["custom_id"] == "sort":
+                if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
+                    self.sort_button.label = "MMR"
+                    self.players = extended_list[0]
+                    self.current_embed = PlayersExtEmbed(self.players)
+                    self.current_embed_index = 1
+                    self.current_sort_embed_index = 1
 
+                elif self.current_embed_index == 1 and self.current_sort_embed_index == 1:
+                    self.sort_button.label = "Name"
+                    self.players = extended_list[1]
+                    self.current_embed = PlayersExtEmbed(self.players)
+                    self.current_embed_index = 1
+                    self.current_sort_embed_index = 0
+                    
+
+
+                elif self.current_embed_index == 0 and self.current_sort_embed_index == 1:
+                    self.sort_button.label = "Name"
+                    self.players = normal_list[0]
+                    self.current_embed = PlayersEmbed(self.players)
+                    self.current_embed_index = 0
+                    self.current_sort_embed_index = 2
+
+                elif self.current_embed_index == 0 and self.current_sort_embed_index == 2:
+                    self.sort_button.label = "Winrate"
+                    self.players = normal_list[1]
+                    self.current_embed = PlayersEmbed(self.players)
+                    self.current_embed_index = 0
+                    self.current_sort_embed_index = 3
+
+                elif self.current_embed_index == 0 and self.current_sort_embed_index == 3:
+                    self.sort_button.label = "Matches"
+                    self.players = normal_list[2]
+                    self.current_embed = PlayersEmbed(self.players)
+                    self.current_embed_index = 0
+                    self.current_sort_embed_index = 1
+                    
+            
+                print("inte sort ::", self.current_embed_index)
+                print("sort ::",self.current_sort_embed_index)
+                await interaction.message.edit(embed=self.current_embed, view=self)
+                await interaction.response.defer()
+                return
         self.view_button.callback = view_callback
+        self.sort_button.callback = view_callback
         self.add_item(self.view_button)
+        self.add_item(self.sort_button)
 
 
 class CustomMatch:
