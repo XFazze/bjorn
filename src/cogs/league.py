@@ -264,7 +264,7 @@ class league(commands.Cog):
     )
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
-
+        
         embed = PlayersEmbed(players)
         view = PlayersView(players)
 
