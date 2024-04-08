@@ -114,6 +114,15 @@ class Player:
             insertion, (self.discord_id, self.mmr, datetime.datetime.now())
         )
         self.db.connection.commit()
+    def get_rank(self):
+        for (i, j) in ranks_mmr.items():
+                if self.mmr < j:
+                    rank = i
+                    return rank
+    def get_lp(self):
+        rank = self.get_rank()
+        lp = ranks_mmr[rank] - self.mmr
+        return 100-lp*2
 
 
 class Match:
@@ -262,6 +271,10 @@ class PlayersExtEmbed(discord.Embed):
 
         self.add_field(
             name="MMR", value="\n".join([f"{p.mmr}" for p in players])
+        )
+
+        self.add_field(
+            name="Rank", value="\n".join([f"{p.get_rank()} | {p.get_lp()}%" for p in players])
         )
 
 
