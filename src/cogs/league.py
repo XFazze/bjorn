@@ -9,6 +9,7 @@ from lib.league import (
     Database,
     Player,
     generate_teams,
+    mmr_graph,
     ranks_mmr,
     ranks_type,
     QueueView,
@@ -21,6 +22,7 @@ from lib.league import (
     PlayersEmbed,
     PlayersView,
     start_match,
+    MmrGraphEmbed,
 )
 
 
@@ -241,11 +243,19 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @rating.command(
+        name="graph", description="Get a users league customs mmr graph over time"
+    )
+    async def mmr_graph(self, ctx: commands.Context, player: discord.Member):
+        file = mmr_graph(self.bot, player)
+        embed = MmrGraphEmbed(player)
+        await ctx.reply(file=file, embed=embed)
+
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
         players = sorted(players, key=lambda p: -len(p.matches))
-        
+
         embed = PlayersEmbed(players)
         view = PlayersView(players)
 
