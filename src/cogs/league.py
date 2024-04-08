@@ -247,7 +247,7 @@ class league(commands.Cog):
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
-
+        players = sorted(players, key=lambda p: -len(p.matches))
         embed = PlayersEmbed(players)
         view = PlayersView(players)
 
