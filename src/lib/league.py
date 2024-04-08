@@ -71,6 +71,48 @@ class Tournament:
     pass
 
 
+class GuildOptions:
+    def __init__(self):
+        pass
+
+
+class StartMenuEmbed(discord.Embed):
+    def __init__(self):
+        pass
+
+
+class StartMenuView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=7200)
+        
+        self.buttons = {
+            discord.ui.Button(
+                label="",
+                custom_id=""
+            ),
+            discord.ui.Button(
+                label="",
+                custom_id=""
+            ),
+            discord.ui.Button(
+                label="",
+                custom_id=""
+            ),
+            discord.ui.Button(
+                label="",
+                custom_id=""
+            ),
+            discord.ui.Button(
+                label="",
+                custom_id=""
+            ),
+            discord.ui.Button(
+                label="",
+                custom_id=""
+            ),
+        }
+
+
 class Player:
     def __init__(self, bot: commands.Bot, discord_id: int, get_matches=True):
         self.db = Database(bot, "data/league.sqlite")
@@ -153,9 +195,16 @@ class Database(general.Database):
                     "timestamp",
                 ],
                 "mmr_history": ["discord_id", "mmr", "timestamp"],
+                "guild_options": ["guild_id", "customs_channel"]
             }
         )
         self.bot = bot
+
+    def get_all_guild_options(self):
+        res = self.cursor.execute(
+            f"SELECT guild_id, customs_channel FROM guild_options"
+        ).fetchall()
+        
 
     def get_all_matches(self):
         res = self.cursor.execute(
