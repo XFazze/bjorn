@@ -98,9 +98,25 @@ class StartMenuView(discord.ui.View):
 
 
 class Player:
-    def __init__(self, bot: commands.Bot, discord_id: int, get_matches=True):
+    def __init__(
+        self,
+        bot: commands.Bot,
+        discord_id: int = None,
+        discord_name: str = None,
+        get_matches=True,
+    ):
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
+
+        if discord_id == None:
+            if discord_name == None:
+                return None
+            discord_member_object = next(
+                (m for m in self.bot.get_all_members() if m.name == discord_name), None
+            )
+            if discord_member_object is None:
+                return None
+            discord_id = discord_member_object.id
 
         existing_player = self.db.cursor.execute(
             f"SELECT discord_id, mmr, wins, losses FROM player WHERE discord_id = {discord_id}"
@@ -337,8 +353,6 @@ class PlayersView(discord.ui.View):
             sorted(self.players, key=lambda p: -p.mmr),
             sorted(self.players, key=lambda p: p.discord_name),
         ]
-        print("inte sort", self.current_embed_index)
-        print("sort", self.current_sort_embed_index)
 
         async def view_callback(interaction: discord.Interaction):
             if interaction.data["custom_id"] == "view":
@@ -356,8 +370,6 @@ class PlayersView(discord.ui.View):
                     self.current_embed_index = 0
                     self.current_sort_embed_index = 1
                     self.view_button.label = "Extended"
-                print("inte sort :", self.current_embed_index)
-                print("sort :", self.current_sort_embed_index)
                 await interaction.message.edit(embed=self.current_embed, view=self)
                 await interaction.response.defer()
                 return
@@ -406,8 +418,6 @@ class PlayersView(discord.ui.View):
                     self.current_embed_index = 0
                     self.current_sort_embed_index = 1
 
-                print("inte sort ::", self.current_embed_index)
-                print("sort ::", self.current_sort_embed_index)
                 await interaction.message.edit(embed=self.current_embed, view=self)
                 await interaction.response.defer()
                 return
@@ -625,7 +635,7 @@ class QueueEmbed(discord.Embed):
         self, queue: list[Player], vc_members_names: list[str], creator: discord.Member
     ):
         super().__init__(title=f"Queue {len(queue)}p", color=0x00FF42)
-
+        self.creator = creator
         self.add_field(name="Players", value="\n".join([p.discord_name for p in queue]))
         self.add_field(
             name="VC",
@@ -668,13 +678,16 @@ class QueueView(discord.ui.View):
                     self.queue.append(interaction.user)
 
                 vc_members_names = [m.name for m in self.voice_channel.members]
+
                 await interaction.message.edit(
                     embed=QueueEmbed(
                         [Player(self.bot, p.id, False) for p in self.queue],
                         vc_members_names,
-                        interaction.user,
+                        Player(
+                            self.bot,
+                            discord_name=interaction.message.embeds[0].footer.text[9:],
+                        ).discord_member_object,
                     ),
-                    view=self,
                 )
 
             if interaction.data["custom_id"] == "leave_queue":
@@ -686,9 +699,11 @@ class QueueView(discord.ui.View):
                     embed=QueueEmbed(
                         [Player(self.bot, p.id, False) for p in self.queue],
                         vc_members_names,
-                        interaction.user,
+                        Player(
+                            self.bot,
+                            discord_name=interaction.message.embeds[0].footer.text[9:],
+                        ).discord_member_object,
                     ),
-                    view=self,
                 )
             await interaction.response.defer()
 
@@ -697,24 +712,63 @@ class QueueView(discord.ui.View):
             self.add_item(button)
 
 
+class RemovePlayerFromQueueSelect(discord.ui.Select):
+    def __init__(self, players: list[discord.User]):
+        options = [discord.SelectOption(label="Noone", description="Remove Noone")] + [
+            discord.SelectOption(label=p.name) for p in players
+        ]
+        super().__init__(
+            placeholder="Select player to remove",
+            custom_id="remove_queue_select",
+            max_values=1,
+            min_values=1,
+            options=options,
+            row=2,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            content=f"Your choice is {self.values[0]}!", ephemeral=True
+        )
+
+
 class QueueControlView(discord.ui.View):
-    def __init__(self, bot, queue_message, queue_view):
+    def __init__(
+        self,
+        bot,
+        queue_message: discord.Message,
+        queue_view: QueueView,
+        players=[],
+        voice: discord.VoiceChannel = None,
+    ):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
         self.queue_message = queue_message
         self.queue_view = queue_view
+        self.voice = voice
         self.buttons = [
             discord.ui.Button(
-                label="Start match", style=discord.ButtonStyle.green, custom_id="start"
+                label="Start match",
+                style=discord.ButtonStyle.green,
+                custom_id="start",
+                row=0,
             ),
             discord.ui.Button(
                 label="Discard",
                 style=discord.ButtonStyle.red,
                 custom_id="discard",
-                row=2,
+                row=0,
+            ),
+            discord.ui.Button(
+                label="Update remove list",
+                style=discord.ButtonStyle.blurple,
+                custom_id="update_remove",
+                row=3,
             ),
         ]
+        if len(players) > 0:
+            self.buttons.append(RemovePlayerFromQueueSelect(players))
 
         async def queue_callback(interaction: discord.Interaction):
             if interaction.data["custom_id"] == "discard":
@@ -722,7 +776,7 @@ class QueueControlView(discord.ui.View):
                 await interaction.response.defer()
                 return
 
-            if interaction.data["custom_id"] == "start" or len(self.queue) == 10:
+            if interaction.data["custom_id"] == "start" or len(queue_view.queue) == 10:
                 if len(queue_view.queue) < 2:
                     await interaction.response.send_message(
                         "Not enough players in queue", ephemeral=True
@@ -738,6 +792,48 @@ class QueueControlView(discord.ui.View):
                     interaction.user,
                     interaction.channel,
                     interaction,
+                )
+            if interaction.data["custom_id"] == "remove_queue_select":
+                queue_view.queue = [
+                    p
+                    for p in queue_view.queue
+                    if p.name != interaction.data["values"][0]
+                ]
+                if self.voice:
+                    vc_members_names = [m.name for m in self.voice.members]
+                else:
+                    vc_members_names = []
+
+                await self.queue_message.edit(
+                    embed=QueueEmbed(
+                        [Player(self.bot, p.id, False) for p in self.queue_view.queue],
+                        vc_members_names,
+                        Player(
+                            self.bot,
+                            discord_name=self.queue_message.embeds[0].footer.text[9:],
+                        ).discord_member_object,
+                    )
+                )
+                await interaction.response.edit_message(
+                    view=QueueControlView(
+                        self.bot,
+                        self.queue_message,
+                        self.queue_view,
+                        queue_view.queue,
+                        voice=self.voice,
+                    )
+                )
+
+            if interaction.data["custom_id"] == "update_remove":
+                self.add_item(RemovePlayerFromQueueSelect(queue_view.queue))
+                await interaction.response.edit_message(
+                    view=QueueControlView(
+                        self.bot,
+                        self.queue_message,
+                        self.queue_view,
+                        queue_view.queue,
+                        voice=self.voice,
+                    )
                 )
 
         for button in self.buttons:
