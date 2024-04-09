@@ -10,6 +10,8 @@ import logging
 load_dotenv(".env")
 load_dotenv(".env.secret")
 
+if not os.path.exists("data"):
+    os.makedirs("data")
 
 if os.getenv("DEV") != "TRUE":
     discord.utils.setup_logging(level=logging.INFO, root=False)
