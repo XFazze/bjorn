@@ -38,9 +38,8 @@ async def main():
         for cog in cogs:
             await bot.load_extension(f"cogs.{cog}")
     else:
-        print("loaderd")
+        print("Dev mode enabled")
         await bot.load_extension(f"cogs.dev")
-        await bot.load_extension(f"cogs.info")
         await bot.load_extension(f"cogs.{os.getenv('TEST_COG')}")
     await bot.start(os.getenv("TOKEN"))
 
