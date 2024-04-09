@@ -285,7 +285,7 @@ class Database(general.Database):
 
 class StartMenuInitView(discord.ui.View):
     def __init__(self):
-        super().__init__(timeout=7200)
+        super().__init__(timeout=2419200)
 
         yes_button = discord.ui.Button(
             label="Yes",

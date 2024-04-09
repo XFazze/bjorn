@@ -30,10 +30,6 @@ class league(commands.Cog):
         self.bot = bot
         self.db = Database(bot, "data/league.sqlite")
 
-    @commands.Cog.listener()
-    async def on_message(self, ctx: commands.Context):
-        pass
-
     @commands.hybrid_group(name="league", description="League commands")
     async def league(self, ctx: commands.Context): pass
 
@@ -100,7 +96,8 @@ class league(commands.Cog):
 
         if len(member_players) < 2:
             await ctx.reply(
-                embed=discord.Embed(title=f"Not enough players!", color=0xFF0000)
+                embed=discord.Embed(
+                    title=f"Not enough players!", color=0xFF0000)
             )
             return
 
