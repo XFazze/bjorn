@@ -106,8 +106,14 @@ class league(commands.Cog):
             vc_members_names = [
                 member.name for member in ctx.author.voice.channel.members
             ]
+        role_name = "ingame"
+        role = discord.utils.get(ctx.guild.roles, name=role_name)
+        for member in ctx.guild.members:
+            if role in member.roles:
+                await member.remove_roles(role)
+        
         embed = QueueEmbed([], vc_members_names)
-        view = QueueView(self.bot)
+        view = QueueView(self.bot, role)
         await ctx.reply(embed=embed, view=view)
 
     @league.command(name="free_teams", description="Create your own teams.")

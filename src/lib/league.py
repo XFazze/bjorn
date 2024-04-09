@@ -502,6 +502,9 @@ class MatchView(discord.ui.View):  # ändra till playersembed
         ]
 
         async def win_callback(interaction: discord.Interaction):
+            role = discord.utils.get(interaction.guild.roles, name="ingame")
+            player_id = [player.discord_id for player in match.team1 + match.team2]
+            
             self.current_embed = interaction.message.embeds[0]
             if interaction.data["custom_id"] == "players":
                 if self.current_embed.title == "Players":
@@ -527,10 +530,19 @@ class MatchView(discord.ui.View):  # ändra till playersembed
                 return
 
             if interaction.data["custom_id"] == "discard":
+                for user_id in player_id:
+                    user = interaction.guild.get_member(user_id)
+                    if role in user.roles:
+                            await user.remove_roles(role)
                 await interaction.message.delete()
                 await interaction.response.defer()
                 return
             if interaction.data["custom_id"] == "left":
+                for user_id in player_id:
+                    user = interaction.guild.get_member(user_id)
+                    if role in user.roles:
+                            await user.remove_roles(role)
+                
                 match.finish_match(1)
                 self.current_embed.title = f"Winner: Left Team"
                 await interaction.message.edit(
@@ -540,6 +552,11 @@ class MatchView(discord.ui.View):  # ändra till playersembed
                 await interaction.response.defer()
                 return
             if interaction.data["custom_id"] == "right":
+                for user_id in player_id:
+                    user = interaction.guild.get_member(user_id)
+                    if role in user.roles:
+                            await user.remove_roles(role)
+                
                 match.finish_match(2)
                 self.current_embed.title = f"Winner: Right Team"
                 await interaction.message.edit(
@@ -612,7 +629,7 @@ class QueueEmbed(discord.Embed):
 
 
 class QueueView(discord.ui.View):
-    def __init__(self, bot):
+    def __init__(self, bot, role):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
@@ -659,13 +676,18 @@ class QueueView(discord.ui.View):
                 return
 
             if interaction.data["custom_id"] == "start" or len(self.queue) == 10:
+                self.role = discord.utils.get(interaction.guild.roles, name="ingame")
                 if len(self.queue) < 2:
                     await interaction.response.send_message(
                         "Not enough players in queue", ephemeral=True
                     )
                     await interaction.response.defer()
                     return
-
+                
+                for user in self.queue:
+                    if role not in user.roles:
+                            await user.add_roles(role)
+                
                 team1, team2 = generate_teams(
                     [Player(self.bot, p.id, False) for p in self.queue]
                 )
@@ -673,11 +695,9 @@ class QueueView(discord.ui.View):
 
                 embed = MatchEmbed(team1, team2)
                 view = MatchView(self.bot, match, embed)
-
-                await interaction.channel.send(
-                    content="".join([p.mention for p in self.queue])
-                )
+                
                 await interaction.channel.send(embed=embed, view=view)
+                await interaction.channel.send(f"<@&{self.role.id}>")
 
                 bettervc_category_obj: discord.CategoryChannel = self.bot.get_channel(
                     int(os.getenv("BETTERVC_CATEGORY_ID"))
