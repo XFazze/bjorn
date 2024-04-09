@@ -24,6 +24,7 @@ from lib.league import (
     FreeView,
     PlayersEmbed,
     PlayersView,
+    StartMenuInitView,
 )
 
 
@@ -32,9 +33,30 @@ class league(commands.Cog):
         self.bot = bot
         self.db = Database(bot, "data/league.sqlite")
 
-    @commands.hybrid_group(name="league", description="League commands")
-    async def league(self, ctx: commands.Context):
+    @commands.Cog.listener()
+    async def on_message(self, ctx: commands.Context):
         pass
+
+    @commands.hybrid_group(name="league", description="League commands")
+    async def league(self, ctx: commands.Context): pass
+
+    @league.command(
+        name="init",
+        description="Creates a league customs main channel."
+    )
+    async def league_init(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title=f"Are you sure?",
+            color=0xFF0000
+        )
+        embed.add_field(
+            name="",
+            value=f"If you press yes the bot will make a copy of this channel (permissions, name and members) and make that a customs hub."
+        )
+
+        view = StartMenuInitView()
+
+        await ctx.reply(embed=embed, view=view, ephemeral=True)
 
     @league.command(
         name="customs",
@@ -237,7 +259,8 @@ class league(commands.Cog):
     @rating.command(name="list", description="Get all ranks and equivalent MMRs")
     async def mmr_list(self, ctx: commands.Context):
         embed = discord.Embed(title="League ranks")
-        embed.add_field(name="Rank", value="\n".join([i for i in ranks_mmr.keys()]))
+        embed.add_field(name="Rank", value="\n".join(
+            [i for i in ranks_mmr.keys()]))
         embed.add_field(
             name="MMR", value="\n".join([str(i) for i in ranks_mmr.values()])
         )
@@ -310,7 +333,8 @@ class league(commands.Cog):
                 name=f"Team 2",
                 value=f"\n".join([f"{p.discord_name}" for p in match.team2]),
             )
-            embed.add_field(name=f"Date", value=f"{match.timestamp[:10]}", inline=False)
+            embed.add_field(
+                name=f"Date", value=f"{match.timestamp[:10]}", inline=False)
             embed.add_field(name=f"Result", value=f"Team {match.winner}")
             embeds.append(embed)
 

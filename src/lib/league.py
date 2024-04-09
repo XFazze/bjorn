@@ -72,45 +72,9 @@ class Tournament:
 
 
 class GuildOptions:
-    def __init__(self):
-        pass
-
-
-class StartMenuEmbed(discord.Embed):
-    def __init__(self):
-        pass
-
-
-class StartMenuView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=7200)
-        
-        self.buttons = {
-            discord.ui.Button(
-                label="",
-                custom_id=""
-            ),
-            discord.ui.Button(
-                label="",
-                custom_id=""
-            ),
-            discord.ui.Button(
-                label="",
-                custom_id=""
-            ),
-            discord.ui.Button(
-                label="",
-                custom_id=""
-            ),
-            discord.ui.Button(
-                label="",
-                custom_id=""
-            ),
-            discord.ui.Button(
-                label="",
-                custom_id=""
-            ),
-        }
+    def __init__(self, guild_id: int, customs_channels: list[int]):
+        self.guild_id = guild_id
+        self.customs_channels = customs_channels
 
 
 class Player:
@@ -195,18 +159,24 @@ class Database(general.Database):
                     "timestamp",
                 ],
                 "mmr_history": ["discord_id", "mmr", "timestamp"],
-                "guild_options": ["guild_id", "customs_channel"]
+                "guild_options": ["guild_id", "customs_channels"]
             }
         )
         self.bot = bot
 
-    def get_all_guild_options(self):
+    def get_all_guilds_options(self):
         res = self.cursor.execute(
             f"SELECT guild_id, customs_channel FROM guild_options"
         ).fetchall()
-        
 
-    def get_all_matches(self):
+        options = []
+        for i in res:
+            options.append(GuildOptions(
+                int(i[0]), [int(i) for i in i[1].split(" ")]))
+
+        return options
+
+    def get_all_matches(self) -> list[Match]:
         res = self.cursor.execute(
             f"SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match"
         ).fetchall()
@@ -226,7 +196,7 @@ class Database(general.Database):
 
         return matches
 
-    def get_matches(self, discord_id: int):
+    def get_matches(self, discord_id: int) -> list[Match]:
         res = self.cursor.execute(
             f"SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match"
         ).fetchall()
@@ -252,13 +222,30 @@ class Database(general.Database):
                 matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
         return matches
 
-    def get_all_players(self):
+    def get_all_players(self) -> list[Player]:
         res = self.cursor.execute(f"SELECT discord_id FROM player").fetchall()
         return [Player(self.bot, i[0]) for i in res]
 
+    def insert_guild_options(self, options: GuildOptions):
+        guild_id = str(options.guild_id)
+        customs_channels = "".join(
+            [str(i) + " " for i in options.customs_channels])
+
+        insertion = f"INSERT INTO guild_options (guild_id, customs_channels) VALUES (?, ?)"
+        self.cursor.execute(
+            insertion,
+            (
+                guild_id,
+                customs_channels,
+            )
+        )
+        self.connection.commit()
+
     def insert_match(self, match: Match):
-        team1_string = "".join([str(player.discord_id) + " " for player in match.team1])
-        team2_string = "".join([str(player.discord_id) + " " for player in match.team2])
+        team1_string = "".join(
+            [str(player.discord_id) + " " for player in match.team1])
+        team2_string = "".join(
+            [str(player.discord_id) + " " for player in match.team2])
 
         insertion = f"INSERT INTO match (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
         self.cursor.execute(
@@ -280,8 +267,15 @@ class Database(general.Database):
         )
         self.connection.commit()
 
+    def remove_guild_options(self, options: GuildOptions):
+        self.cursor.execute(
+            f"DELETE FROM guild_options WHERE guild_id = {options.guild_id}"
+        )
+        self.connection.commit()
+
     def remove_player(self, player: discord.Member):
-        self.cursor.execute(f"DELETE FROM player WHERE discord_id = {player.id}")
+        self.cursor.execute(
+            f"DELETE FROM player WHERE discord_id = {player.id}")
         self.connection.commit()
 
     def remove_match(self, match_id: int):
@@ -289,11 +283,115 @@ class Database(general.Database):
         self.connection.commit()
 
 
+class StartMenuInitView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=7200)
+
+        yes_button = discord.ui.Button(
+            label="Yes",
+            custom_id="yes",
+            style=discord.ButtonStyle.green
+        )
+
+        async def callback(interaction: discord.Interaction):
+            if interaction.data["custom_id"] == "yes":
+                if interaction.channel.category is not None:
+                    new_channel = await interaction.channel.category.create_text_channel(
+                        interaction.channel.name
+                    )
+                else:
+                    new_channel = await interaction.guild.create_text_channel(
+                        interaction.channel.name
+                    )
+
+                old_overwrites = interaction.channel.overwrites
+                for (target, permission) in old_overwrites.items():
+                    await new_channel.set_permissions(target=target, overwrite=permission)
+
+                embed = StartMenuEmbed()
+                view = StartMenuView()
+
+                await new_channel.send(embed=embed, view=view)
+
+        yes_button.callback = callback
+        self.add_item(yes_button)
+
+
+class StartMenuEmbed(discord.Embed):
+    def __init__(self):
+        super().__init__(title=f"League customs control panel", color=0xffec00)
+
+        self.add_field(
+            name="Auto teams",
+            value="Automatically create a custom 5v5 game with people from your VC.",
+            inline=False
+        )
+        self.add_field(
+            name="Create teams",
+            value="Create your own teams of 5v5.",
+            inline=False
+        )
+        self.add_field(
+            name="Create queue",
+            value="Create a queue that people can join.",
+            inline=False
+        )
+        self.add_field(
+            name="Auto arena",
+            value="Automatically create an arena lobby with people from your VC.",
+            inline=False
+        )
+
+
+class StartMenuView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=7200)
+
+        self.buttons = [
+            discord.ui.Button(
+                label="Auto teams",
+                custom_id="auto_teams",
+                style=discord.ButtonStyle.primary
+            ),
+            discord.ui.Button(
+                label="Create teams",
+                custom_id="create_teams",
+                style=discord.ButtonStyle.primary
+            ),
+            discord.ui.Button(
+                label="Create queue",
+                custom_id="create_queue",
+                style=discord.ButtonStyle.primary
+            ),
+            discord.ui.Button(
+                label="Auto arena",
+                custom_id="auto_arena",
+                style=discord.ButtonStyle.primary,
+                disabled=True
+            )
+        ]
+
+        async def callback(interaction: discord.Interaction):
+            if interaction.data["custom_id"] == "auto_teams":
+                pass
+            if interaction.data["custom_id"] == "create_teams":
+                pass
+            if interaction.data["custom_id"] == "create_queue":
+                pass
+            if interaction.data["custom_id"] == "auto_arena":
+                pass
+
+        for i, button in enumerate(self.buttons):
+            button.callback = callback
+            self.add_item(button)
+
+
 class PlayersEmbed(discord.Embed):
     def __init__(self, players: list[Player]):
         super().__init__(title=f"Players", color=0x00FF42)
 
-        self.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
+        self.add_field(name="Name", value="\n".join(
+            [p.discord_name for p in players]))
         self.add_field(
             name="Win rate", value="\n".join([f"{p.win_rate:.1f}%" for p in players])
         )
@@ -306,9 +404,11 @@ class PlayersExtEmbed(discord.Embed):
     def __init__(self, players: list[Player]):
         super().__init__(title=f"Players", color=0x00FF42)
 
-        self.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
+        self.add_field(name="Name", value="\n".join(
+            [p.discord_name for p in players]))
 
-        self.add_field(name="MMR", value="\n".join([f"{p.mmr}" for p in players]))
+        self.add_field(name="MMR", value="\n".join(
+            [f"{p.mmr}" for p in players]))
 
 
 class PlayersView(discord.ui.View):
@@ -441,7 +541,7 @@ class MatchEmbed(discord.Embed):
         )
 
 
-class MatchView(discord.ui.View):  # ändra till playersembed
+class MatchView(discord.ui.View):
     def __init__(self, bot, match: CustomMatch, base_embed: discord.Embed):
         super().__init__(timeout=7200)
 
@@ -567,7 +667,8 @@ class QueueEmbed(discord.Embed):
     def __init__(self, queue: list[Player], vc_members_names: list[str]):
         super().__init__(title=f"Queue {len(queue)}p", color=0x00FF42)
 
-        self.add_field(name="Players", value="\n".join([p.discord_name for p in queue]))
+        self.add_field(name="Players", value="\n".join(
+            [p.discord_name for p in queue]))
         self.add_field(
             name="VC",
             value="\n".join(
@@ -671,8 +772,10 @@ class FreeEmbed(discord.Embed):
     def __init__(self, team1: list[Player], team2: list[Player]):
         super().__init__(title="Create teams", color=0x00FF42)
 
-        self.add_field(name="Team 1", value="\n".join([p.discord_name for p in team1]))
-        self.add_field(name="Team 2", value="\n".join([p.discord_name for p in team2]))
+        self.add_field(name="Team 1", value="\n".join(
+            [p.discord_name for p in team1]))
+        self.add_field(name="Team 2", value="\n".join(
+            [p.discord_name for p in team2]))
 
 
 class FreeView(discord.ui.View):
@@ -753,8 +856,10 @@ class FreeView(discord.ui.View):
                         "Not enough players in queue", ephemeral=True
                     )
                     return
-                player_team_1 = [Player(self.bot, p.id, False) for p in self.team1]
-                player_team_2 = [Player(self.bot, p.id, False) for p in self.team2]
+                player_team_1 = [Player(self.bot, p.id, False)
+                                 for p in self.team1]
+                player_team_2 = [Player(self.bot, p.id, False)
+                                 for p in self.team2]
 
                 match = CustomMatch(
                     self.bot, interaction.user, player_team_1, player_team_2
