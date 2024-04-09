@@ -111,7 +111,7 @@ class league(commands.Cog):
         view = QueueView(self.bot, voice, role)
         message = await ctx.reply(embed=embed, view=view)
 
-        view = QueueControlView(self.bot, message, view)
+        view = QueueControlView(self.bot, message, view, voice=voice)
         await ctx.interaction.followup.send("Queue control", view=view, ephemeral=True)
 
     @league.command(name="free_teams", description="Create your own teams.")
