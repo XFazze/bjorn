@@ -8,22 +8,21 @@ import lib.persmissions as permissions
 from lib.league import (
     Database,
     Player,
-    CustomMatch,
-    Tournament,
-    CustomMatch,
     generate_teams,
-    MatchEmbed,
-    MatchView,
+    mmr_graph,
     ranks_mmr,
     ranks_type,
     QueueView,
     QueueEmbed,
+    QueueControlView,
     PlayerMatchesView,
     Match,
     FreeEmbed,
     FreeView,
     PlayersEmbed,
     PlayersView,
+    start_match,
+    MmrGraphEmbed,
 )
 
 
@@ -81,20 +80,13 @@ class league(commands.Cog):
 
         if len(member_players) < 2:
             await ctx.reply(
-                embed=discord.Embed(
-                    title=f"Not enough players in voice channel!", color=0xFF0000
-                )
+                embed=discord.Embed(title=f"Not enough players!", color=0xFF0000)
             )
             return
 
         players = [Player(self.bot, i.id) for i in member_players]
         team1, team2 = generate_teams(players)
-        custom_match = CustomMatch(self.bot, ctx.author, team1, team2)
-
-        embed = MatchEmbed(team1, team2)
-        view = MatchView(self.bot, custom_match, embed)
-
-        await ctx.reply(embed=embed, view=view)
+        await start_match()
 
     @league.command(
         name="queue",
@@ -106,20 +98,26 @@ class league(commands.Cog):
             vc_members_names = [
                 member.name for member in ctx.author.voice.channel.members
             ]
-        role_name = "ingame"
-        role = discord.utils.get(ctx.guild.roles, name=role_name)
+        role = discord.utils.get(ctx.guild.roles, name="ingame")
         for member in ctx.guild.members:
             if role in member.roles:
                 await member.remove_roles(role)
         
-        embed = QueueEmbed([], vc_members_names)
-        view = QueueView(self.bot, role)
-        await ctx.reply(embed=embed, view=view)
+        embed = QueueEmbed([], vc_members_names, ctx.author)
+        if ctx.author.voice:
+            voice = ctx.author.voice.channel
+        else:
+            voice = None
+        view = QueueView(self.bot, voice, role)
+        message = await ctx.reply(embed=embed, view=view)
+
+        view = QueueControlView(self.bot, message, view)
+        await ctx.interaction.followup.send("Queue control", view=view, ephemeral=True)
 
     @league.command(name="free_teams", description="Create your own teams.")
     async def free_teams(self, ctx: commands.Context):
-        embed = FreeEmbed([], [])
-        view = FreeView(self.bot)
+        embed = FreeEmbed([], [], ctx.author)
+        view = FreeView(self.bot, ctx.author)
         await ctx.reply(embed=embed, view=view)
 
     @league.command(
@@ -250,11 +248,19 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @rating.command(
+        name="graph", description="Get a users league customs mmr graph over time"
+    )
+    async def mmr_graph(self, ctx: commands.Context, player: discord.Member):
+        file = mmr_graph(self.bot, player)
+        embed = MmrGraphEmbed(player)
+        await ctx.reply(file=file, embed=embed)
+
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
         players = sorted(players, key=lambda p: -len(p.matches))
-        
+
         embed = PlayersEmbed(players)
         view = PlayersView(players)
 
