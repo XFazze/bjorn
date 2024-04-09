@@ -98,12 +98,17 @@ class league(commands.Cog):
             vc_members_names = [
                 member.name for member in ctx.author.voice.channel.members
             ]
+        role = discord.utils.get(ctx.guild.roles, name="ingame")
+        for member in ctx.guild.members:
+            if role in member.roles:
+                await member.remove_roles(role)
+        
         embed = QueueEmbed([], vc_members_names, ctx.author)
         if ctx.author.voice:
             voice = ctx.author.voice.channel
         else:
             voice = None
-        view = QueueView(self.bot, voice)
+        view = QueueView(self.bot, voice, role)
         message = await ctx.reply(embed=embed, view=view)
 
         view = QueueControlView(self.bot, message, view, voice=voice)

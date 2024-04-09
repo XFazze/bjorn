@@ -564,14 +564,24 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
         ]
 
         async def win_callback(interaction: discord.Interaction):
+            role = discord.utils.get(interaction.guild.roles, name="ingame")
+            player_ids = [player.discord_id for player in match.team1 + match.team2]
+
             if interaction.user != match.creator:
                 return
 
             if interaction.data["custom_id"] == "discard":
-                await self.match_message.delete()
-                await interaction.response.defer()
+              for player_id in player_ids:
+                    user = interaction.guild.get_member(player_id)
+                    if role in user.roles:
+                            await user.remove_roles(role)
 
             if interaction.data["custom_id"] == "left_win":
+                for player_id in player_ids:
+                    user = interaction.guild.get_member(player_id)
+                    if role in user.roles:
+                            await user.remove_roles(role)
+                        
                 match.finish_match(1)
                 match_embed.title = f"Winner: Left Team"
                 await match_message.edit(embed=match_embed)
@@ -579,7 +589,12 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                     view=MatchViewDone(self.bot, match),
                 )
 
+
             if interaction.data["custom_id"] == "right_win":
+                for player_id in player_ids:
+                    user = interaction.guild.get_member(player_id)
+                    if role in user.roles:
+                            await user.remove_roles(role)
                 match.finish_match(2)
                 match_embed.title = f"Winner: Right Team"
                 await match_message.edit(embed=match_embed)
@@ -651,7 +666,7 @@ class QueueEmbed(discord.Embed):
 
 
 class QueueView(discord.ui.View):
-    def __init__(self, bot, voice_channel: discord.VoiceChannel):
+    def __init__(self, bot, voice_channel: discord.VoiceChannel,role:discord.Role):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
@@ -777,11 +792,19 @@ class QueueControlView(discord.ui.View):
                 return
 
             if interaction.data["custom_id"] == "start" or len(queue_view.queue) == 10:
+                role = discord.utils.get(interaction.guild.roles, name="ingame")
                 if len(queue_view.queue) < 2:
                     await interaction.response.send_message(
                         "Not enough players in queue", ephemeral=True
                     )
                     return
+                
+                for user in queue_view.queue:
+                    if role  not in user.roles:
+                            await user.add_roles(role)
+                        
+                await interaction.channel.send(f"<@&{role.id}>")
+
                 team1, team2 = generate_teams(
                     [Player(self.bot, p.id, False) for p in queue_view.queue]
                 )
@@ -853,9 +876,9 @@ async def start_match(
 
     embed = MatchEmbed(team1, team2, creator)
 
-    await channel.send(
-        "".join([p.discord_member_object.mention for p in team1 + team2])
-    )
+    #await channel.send(
+        #"".join([p.discord_member_object.mention for p in team1 + team2])
+    #)
     match_message = await channel.send(embed=embed)
 
     view = MatchControlView(bot, match, match_message, embed)
