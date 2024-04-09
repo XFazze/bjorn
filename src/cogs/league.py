@@ -8,16 +8,12 @@ import lib.persmissions as permissions
 from lib.league import (
     Database,
     Player,
-    CustomMatch,
-    Tournament,
-    CustomMatch,
     generate_teams,
-    MatchEmbed,
-    MatchView,
     ranks_mmr,
     ranks_type,
     QueueView,
     QueueEmbed,
+    QueueControlView,
     PlayerMatchesView,
     Match,
     FreeEmbed,
@@ -25,6 +21,7 @@ from lib.league import (
     PlayersEmbed,
     PlayersView,
     StartMenuInitView,
+    start_match,
 )
 
 
@@ -103,20 +100,13 @@ class league(commands.Cog):
 
         if len(member_players) < 2:
             await ctx.reply(
-                embed=discord.Embed(
-                    title=f"Not enough players in voice channel!", color=0xFF0000
-                )
+                embed=discord.Embed(title=f"Not enough players!", color=0xFF0000)
             )
             return
 
         players = [Player(self.bot, i.id) for i in member_players]
         team1, team2 = generate_teams(players)
-        custom_match = CustomMatch(self.bot, ctx.author, team1, team2)
-
-        embed = MatchEmbed(team1, team2)
-        view = MatchView(self.bot, custom_match, embed)
-
-        await ctx.reply(embed=embed, view=view)
+        await start_match()
 
     @league.command(
         name="queue",
@@ -128,14 +118,21 @@ class league(commands.Cog):
             vc_members_names = [
                 member.name for member in ctx.author.voice.channel.members
             ]
-        embed = QueueEmbed([], vc_members_names)
-        view = QueueView(self.bot)
-        await ctx.reply(embed=embed, view=view)
+        embed = QueueEmbed([], vc_members_names, ctx.author)
+        if ctx.author.voice:
+            voice = ctx.author.voice.channel
+        else:
+            voice = None
+        view = QueueView(self.bot, voice)
+        message = await ctx.reply(embed=embed, view=view)
+
+        view = QueueControlView(self.bot, message, view)
+        await ctx.interaction.followup.send("Queue control", view=view, ephemeral=True)
 
     @league.command(name="free_teams", description="Create your own teams.")
     async def free_teams(self, ctx: commands.Context):
-        embed = FreeEmbed([], [])
-        view = FreeView(self.bot)
+        embed = FreeEmbed([], [], ctx.author)
+        view = FreeView(self.bot, ctx.author)
         await ctx.reply(embed=embed, view=view)
 
     @league.command(
