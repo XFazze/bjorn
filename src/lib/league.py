@@ -581,8 +581,8 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
 
 
             if interaction.data["custom_id"] == "right_win":
-                for user_id in player_id:
-                    user = interaction.guild.get_member(user_id)
+                for player_id in player_ids:
+                    user = interaction.guild.get_member(player_id)
                     if role in user.roles:
                             await user.remove_roles(role)
                 match.finish_match(2)
@@ -738,17 +738,18 @@ class QueueControlView(discord.ui.View):
                 return
 
             if interaction.data["custom_id"] == "start" or len(self.queue) == 10:
-                self.role = discord.utils.get(interaction.guild.roles, name="ingame")
+                role = discord.utils.get(interaction.guild.roles, name="ingame")
                 if len(queue_view.queue) < 2:
                     await interaction.response.send_message(
                         "Not enough players in queue", ephemeral=True
                     )
                     return
-                 for user in self.queue:
-                    if role not in user.roles:
+                
+                for user in queue_view.queue:
+                    if role  not in user.roles:
                             await user.add_roles(role)
                         
-                await interaction.channel.send(f"<@&{self.role.id}>")
+                await interaction.channel.send(f"<@&{role.id}>")
 
                 team1, team2 = generate_teams(
                     [Player(self.bot, p.id, False) for p in queue_view.queue]
@@ -779,9 +780,9 @@ async def start_match(
 
     embed = MatchEmbed(team1, team2, creator)
 
-    await channel.send(
-        "".join([p.discord_member_object.mention for p in team1 + team2])
-    )
+    #await channel.send(
+        #"".join([p.discord_member_object.mention for p in team1 + team2])
+    #)
     match_message = await channel.send(embed=embed)
 
     view = MatchControlView(bot, match, match_message, embed)
