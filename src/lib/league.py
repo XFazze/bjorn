@@ -38,6 +38,7 @@ ranks_mmr = {
     "Diamond 3": 1750,
     "Diamond 2": 1800,
     "Diamond 1": 1850,
+    "Master+": 1900,
 }
 
 ranks_type = Literal[
