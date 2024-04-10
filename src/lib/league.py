@@ -165,7 +165,7 @@ class Player:
         self.db.connection.commit()
 
     def get_rank(self):
-        rank = "Bronze"
+        rank = "Grandmaster"
         for i, j in ranks_mmr.items():
             if self.mmr < j:
                 rank = i
@@ -173,6 +173,8 @@ class Player:
 
     def get_lp(self):
         rank = self.get_rank()
+        if rank is None:
+            rank = "Grandmaster"
         lp = ranks_mmr[rank] - self.mmr
         return 100 - lp * 2
 
@@ -420,7 +422,8 @@ class PlayersView(discord.ui.View):
                     self.current_embed_index = 0
                     self.current_sort_embed_index = 1
 
-                await interaction.message.edit(embed=self.current_embed, view=self)
+                await interaction.edit_original_response(embed=self.current_embed, view=self)
+                await interaction.response.defer()
                 return
 
         self.view_button.callback = view_callback
