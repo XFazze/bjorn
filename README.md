@@ -4,8 +4,13 @@ Discord bot using discordpy framework.
 
 ## Development
 
-¨
-User black formatter.
+Use black formatter.
+
+```bash
+docker compose --profile dev run --service-ports bot_dev
+```
+
+Add `sh` if shell is wanted.
 
 ### Enviromental variables
 

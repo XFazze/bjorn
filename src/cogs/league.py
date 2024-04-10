@@ -9,6 +9,7 @@ from lib.league import (
     Database,
     Player,
     generate_teams,
+    mmr_graph,
     ranks_mmr,
     ranks_type,
     QueueView,
@@ -22,6 +23,7 @@ from lib.league import (
     PlayersView,
     StartMenuInitView,
     start_match,
+    MmrGraphEmbed,
 )
 
 
@@ -115,15 +117,20 @@ class league(commands.Cog):
             vc_members_names = [
                 member.name for member in ctx.author.voice.channel.members
             ]
+        role = discord.utils.get(ctx.guild.roles, name="ingame")
+        for member in ctx.guild.members:
+            if role in member.roles:
+                await member.remove_roles(role)
+        
         embed = QueueEmbed([], vc_members_names, ctx.author)
         if ctx.author.voice:
             voice = ctx.author.voice.channel
         else:
             voice = None
-        view = QueueView(self.bot, voice)
+        view = QueueView(self.bot, voice, role)
         message = await ctx.reply(embed=embed, view=view)
 
-        view = QueueControlView(self.bot, message, view)
+        view = QueueControlView(self.bot, message, view, voice=voice)
         await ctx.interaction.followup.send("Queue control", view=view, ephemeral=True)
 
     @league.command(name="free_teams", description="Create your own teams.")
@@ -261,10 +268,19 @@ class league(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @rating.command(
+        name="graph", description="Get a users league customs mmr graph over time"
+    )
+    async def mmr_graph(self, ctx: commands.Context, player: discord.Member):
+        file = mmr_graph(self.bot, player)
+        embed = MmrGraphEmbed(player)
+        await ctx.reply(file=file, embed=embed)
+
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
         players = sorted(players, key=lambda p: -len(p.matches))
+
         embed = PlayersEmbed(players)
         view = PlayersView(players)
 
