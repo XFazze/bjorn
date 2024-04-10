@@ -422,7 +422,7 @@ class PlayersView(discord.ui.View):
                     self.current_embed_index = 0
                     self.current_sort_embed_index = 1
 
-                await interaction.edit_original_response(embed=self.current_embed, view=self)
+                await interaction.message.edit(embed=self.current_embed, view=self)
                 await interaction.response.defer()
                 return
 
