@@ -8,6 +8,7 @@ from typing import Optional, Literal
 import math
 import plotly.express as px
 import pandas as pd
+from itertools import combinations
 
 import lib.general as general
 
@@ -1084,32 +1085,25 @@ def mmr_graph(bot, player: discord.Member):
 
 
 def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
-    team1 = []
-    team2 = []
-    sorted(players, key=lambda player: -player.mmr)
-    i = 0
-    while len(players) > i:
-        if len(players) - 1 - i > 3 and random.randint(0, 1) == 1:
-            if (
-                sum([p.mmr for p in team1]) > sum([p.mmr for p in team2])
-                and len(team2) < 5
-            ):
-                team2.append(players[i])
-                team2.append(players[i + 1])
-            else:
-                team1.append(players[i])
-                team1.append(players[i + 1])
-            i += 1
-        else:
-            if (
-                sum([p.mmr for p in team1]) > sum([p.mmr for p in team2])
-                and len(team2) < 5
-            ):
-                team2.append(players[i])
-            else:
-                team1.append(players[i])
-        i += 1
+    num_players = len(players)
+    
+    if num_players > 10:
+        raise ValueError("numplayers > 10")
 
-    random.shuffle(team1)
-    random.shuffle(team2)
-    return (team1, team2)
+    team_size = num_players // 2
+    best_teams = None
+    best_diff = float('inf')
+
+    for team1_indices in combinations(range(num_players), team_size):
+        team1 = [players[i] for i in team1_indices]
+        team2 = [players[i] for i in range(num_players) if i not in team1_indices]
+
+        team1_mmr = sum(player.mmr for player in team1)
+        team2_mmr = sum(player.mmr for player in team2)
+        diff = abs(team1_mmr - team2_mmr)
+
+        if diff < best_diff:
+            best_diff = diff
+            best_teams = (team1, team2)
+
+    return best_teams
