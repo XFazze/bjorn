@@ -575,17 +575,17 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                 return
 
             if interaction.data["custom_id"] == "discard":
-              for player_id in player_ids:
+                for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
+                        await user.remove_roles(role)
 
             if interaction.data["custom_id"] == "left_win":
                 for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
-                        
+                        await user.remove_roles(role)
+
                 match.finish_match(1)
                 match_embed.title = f"Winner: Blue Team"
                 await match_message.edit(embed=match_embed)
@@ -593,12 +593,11 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                     view=MatchViewDone(self.bot, match),
                 )
 
-
             if interaction.data["custom_id"] == "right_win":
                 for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
+                        await user.remove_roles(role)
                 match.finish_match(2)
                 match_embed.title = f"Winner: Red Team"
                 await match_message.edit(embed=match_embed)
@@ -670,7 +669,7 @@ class QueueEmbed(discord.Embed):
 
 
 class QueueView(discord.ui.View):
-    def __init__(self, bot, voice_channel: discord.VoiceChannel,role:discord.Role):
+    def __init__(self, bot, voice_channel: discord.VoiceChannel, role: discord.Role):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
@@ -708,6 +707,7 @@ class QueueView(discord.ui.View):
                         ).discord_member_object,
                     ),
                 )
+                await interaction.response.defer()
 
             if interaction.data["custom_id"] == "leave_queue":
                 if interaction.user in self.queue:
@@ -724,6 +724,7 @@ class QueueView(discord.ui.View):
                         ).discord_member_object,
                     ),
                 )
+                await interaction.response.defer()
 
         for button in self.buttons:
             button.callback = queue_callback
@@ -801,16 +802,19 @@ class QueueControlView(discord.ui.View):
                         "Not enough players in queue", ephemeral=True
                     )
                     return
-                
+
                 for user in queue_view.queue:
-                    if role  not in user.roles:
-                            await user.add_roles(role)
-                        
+                    if role not in user.roles:
+                        await user.add_roles(role)
+
+                print("STAERT")
                 await interaction.channel.send(f"<@&{role.id}>")
+                print("pingning")
 
                 team1, team2 = generate_teams(
                     [Player(self.bot, p.id, False) for p in queue_view.queue]
                 )
+                print("Got teams")
                 await start_match(
                     team1,
                     team2,
@@ -849,6 +853,7 @@ class QueueControlView(discord.ui.View):
                         voice=self.voice,
                     )
                 )
+                await interaction.response.defer()
 
             if interaction.data["custom_id"] == "update_remove":
                 self.add_item(RemovePlayerFromQueueSelect(queue_view.queue))
@@ -876,28 +881,36 @@ async def start_match(
     interaction: discord.Interaction,
 ):
     match = CustomMatch(bot, creator, team1, team2)
+    print("Got match")
 
     embed = MatchEmbed(team1, team2, creator)
+    print("Got embed")
 
-    #await channel.send(
-        #"".join([p.discord_member_object.mention for p in team1 + team2])
-    #)
+    # await channel.send(
+    # "".join([p.discord_member_object.mention for p in team1 + team2])
+    # )
     match_message = await channel.send(embed=embed)
+    print("Sent match")
 
     view = MatchControlView(bot, match, match_message, embed)
+    print("got view")
     await interaction.response.send_message("Match Control", view=view, ephemeral=True)
+    print("sent view")
 
     bettervc_category_obj: discord.CategoryChannel = bot.get_channel(
         int(os.getenv("BETTERVC_CATEGORY_ID"))
     )
     if bettervc_category_obj:
+        print("started nmoving view")
         bettervc_channels = bettervc_category_obj.channels
         for channel in bettervc_channels:
             if len(channel.members) == 0 and channel.name[0] != "|":
+                print("found channel")
                 for p in team1:
                     if p.discord_member_object.voice:
                         await p.discord_member_object.move_to(channel)
                 break
+    print("END")
 
 
 class FreeEmbed(discord.Embed):
@@ -1088,13 +1101,13 @@ def mmr_graph(bot, player: discord.Member):
 
 def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
     num_players = len(players)
-    
+
     if num_players > 10:
         raise ValueError("numplayers > 10")
 
     team_size = num_players // 2
     best_teams = None
-    best_diff = float('inf')
+    best_diff = float("inf")
 
     for team1_indices in combinations(range(num_players), team_size):
         team1 = [players[i] for i in team1_indices]

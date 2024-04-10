@@ -31,9 +31,9 @@ Needed:
 
 For developing
 
-- PREFIX
 - DEV should be true for developing
 - TEST_COG which cog to load while in dev mode
+- PREFIX for different prefix than bot
 
 ### Usefull links
 
