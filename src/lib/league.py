@@ -178,7 +178,7 @@ class Player:
     def get_lp(self):
         rank = self.get_rank()
         if self.mmr >= ranks_mmr["Master+"]:
-            return 100 - (ranks_mmr["Master+"]-self.mmr)*2
+            return 100 - (ranks_mmr["Master+"]-self.mmr)
         
         elif rank is None:
             rank = "Master+"
@@ -188,7 +188,7 @@ class Player:
             lp = ((self.mmr/ranks_mmr["Bronze 3"]) * 100)
             return int(lp//1)
 
-        return int(100 - lp)*2
+        return int(100 - lp)
 
 
 class Match:
