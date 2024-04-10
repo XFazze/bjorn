@@ -4,46 +4,47 @@ import asyncio
 
 import discord
 from discord.ext import commands
-from cogwatch import Watcher
 import logging
 
-load_dotenv(".env")
-load_dotenv(".env.secret")
 
-if not os.path.exists("data"):
-    os.makedirs("data")
+async def setup_bot(
+    cogs: list[str] = ["info", "betterVC", "autoPublic", "league", "dev"],
+    prefix: str = os.getenv("PREFIX"),
+):
+    if not os.path.exists("data"):
+        os.makedirs("data")
+    bot = commands.Bot(intents=discord.Intents.all(), command_prefix=prefix)
 
-if os.getenv("DEV") != "TRUE":
-    discord.utils.setup_logging(level=logging.INFO, root=False)
-else:
-    handler = logging.FileHandler(
-        filename="data/discord.log", encoding="utf-8", mode="w"
-    )
-    discord.utils.setup_logging(level=logging.INFO, root=False, handler=handler)
-
-bot = commands.Bot(intents=discord.Intents.all(), command_prefix=os.getenv("PREFIX"))
-
-
-@bot.event
-async def on_ready():
-    print(f"We have logged in as {bot.user}")
-
-
-@bot.command()
-async def alive(ctx):
-    await ctx.send("Is alive!")
+    for cog in cogs:
+        await bot.load_extension(f"src.cogs.{cog}")
+    print(bot)
 
 
 async def main():
-    cogs = ["info", "betterVC", "autoPublic", "league", "dev"]
-    if os.getenv("DEV") != "True":
-        for cog in cogs:
-            await bot.load_extension(f"cogs.{cog}")
+    load_dotenv(".env")
+    load_dotenv(".env.secret")
+
+    if os.getenv("DEV") != "TRUE":
+        discord.utils.setup_logging(level=logging.INFO, root=False)
     else:
-        print("Dev mode enabled")
-        await bot.load_extension(f"cogs.dev")
-        await bot.load_extension(f"cogs.{os.getenv('TEST_COG')}")
+        handler = logging.FileHandler(
+            filename="data/discord.log", encoding="utf-8", mode="w"
+        )
+        discord.utils.setup_logging(level=logging.INFO, root=False, handler=handler)
+
+    if os.getenv("DEV") == "False":
+        bot = setup_bot()
+    elif os.getenv("DEV") == "True":
+        bot = setup_bot(["dev", os.getenv("TEST_COG")])
+
+    @bot.event
+    async def on_ready():
+        print(f"We have logged in as {bot.user}")
+
+    @bot.command()
+    async def alive(ctx):
+        await ctx.send("Is alive!")
+
     await bot.start(os.getenv("TOKEN"))
 
-
-asyncio.run(main())
+    asyncio.run(main())

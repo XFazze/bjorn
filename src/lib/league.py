@@ -521,11 +521,11 @@ class MatchEmbed(discord.Embed):
         super().__init__(title="Match in progress", color=0x00FF42)
 
         self.add_field(
-            name=f"Left Team ({int(sum([p.mmr for p in team1]))})",
+            name=f"Blue Team ({int(sum([p.mmr for p in team1]))})",
             value="\n".join([p.discord_name for p in team1]),
         )
         self.add_field(
-            name=f"Right Team ({int(sum([p.mmr for p in team2]))})",
+            name=f"Red Team ({int(sum([p.mmr for p in team2]))})",
             value="\n".join([p.discord_name for p in team2]),
         )
         self.set_footer(text=f"Creator: {match_creator.name}")
@@ -548,10 +548,10 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
 
         self.buttons = [
             discord.ui.Button(
-                label="Left Win", style=discord.ButtonStyle.green, custom_id="left_win"
+                label="Blue Win", style=discord.ButtonStyle.green, custom_id="left_win"
             ),
             discord.ui.Button(
-                label="Right Win",
+                label="Red Win",
                 style=discord.ButtonStyle.green,
                 custom_id="right_win",
             ),
@@ -583,7 +583,7 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                             await user.remove_roles(role)
                         
                 match.finish_match(1)
-                match_embed.title = f"Winner: Left Team"
+                match_embed.title = f"Winner: Blue Team"
                 await match_message.edit(embed=match_embed)
                 await interaction.response.edit_message(
                     view=MatchViewDone(self.bot, match),
@@ -596,7 +596,7 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                     if role in user.roles:
                             await user.remove_roles(role)
                 match.finish_match(2)
-                match_embed.title = f"Winner: Right Team"
+                match_embed.title = f"Winner: Red Team"
                 await match_message.edit(embed=match_embed)
                 await interaction.response.edit_message(
                     view=MatchViewDone(self.bot, match),

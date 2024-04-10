@@ -18,3 +18,11 @@ services:
       - .env.secret
     volumes:
       - ./:/app
+  tests:
+    build:
+      context: '.'
+      dockerfile: Dockerfile.test
+    profiles: [ "test" ] # only runs with dev profile
+    env_file:
+      - .env
+      - .env.secret
