@@ -18,6 +18,7 @@ async def setup_bot(
     for cog in cogs:
         await bot.load_extension(f"src.cogs.{cog}")
     print(bot)
+    return bot
 
 
 async def main():
