@@ -587,10 +587,11 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                 return
 
             if interaction.data["custom_id"] == "discard":
-              for player_id in player_ids:
+                for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
                             await user.remove_roles(role)
+                await self.match_message.delete()
 
             if interaction.data["custom_id"] == "left_win":
                 for player_id in player_ids:
@@ -736,6 +737,7 @@ class QueueView(discord.ui.View):
                         ).discord_member_object,
                     ),
                 )
+            await interaction.response.defer()
 
         for button in self.buttons:
             button.callback = queue_callback
@@ -802,7 +804,7 @@ class QueueControlView(discord.ui.View):
 
         async def queue_callback(interaction: discord.Interaction):
             if interaction.data["custom_id"] == "discard":
-                await queue_message.delete()
+                await self.queue_message.delete()
                 await interaction.response.defer()
                 return
 
@@ -813,6 +815,7 @@ class QueueControlView(discord.ui.View):
                         "Not enough players in queue", ephemeral=True
                     )
                     return
+                await interaction.response.defer()
                 
                 for user in queue_view.queue:
                     if role  not in user.roles:
@@ -823,6 +826,7 @@ class QueueControlView(discord.ui.View):
                 team1, team2 = generate_teams(
                     [Player(self.bot, p.id, False) for p in queue_view.queue]
                 )
+                print("g",interaction, interaction.response.is_done())
                 await start_match(
                     team1,
                     team2,
@@ -897,7 +901,7 @@ async def start_match(
     match_message = await channel.send(embed=embed)
 
     view = MatchControlView(bot, match, match_message, embed)
-    await interaction.response.send_message("Match Control", view=view, ephemeral=True)
+    await interaction.followup.send("Match Control", view=view, ephemeral=True)
 
     bettervc_category_obj: discord.CategoryChannel = bot.get_channel(
         int(os.getenv("BETTERVC_CATEGORY_ID"))
