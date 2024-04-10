@@ -14,6 +14,7 @@ import lib.general as general
 
 
 ranks_mmr = {
+    "Iron+" : 0,
     "Bronze 3": 750,
     "Bronze 2": 800,
     "Bronze 1": 850,
@@ -37,11 +38,10 @@ ranks_mmr = {
     "Diamond 3": 1750,
     "Diamond 2": 1800,
     "Diamond 1": 1850,
-    "Master": 1900,
-    "Grandmaster": 1950,
 }
 
 ranks_type = Literal[
+    "Iron+",
     "Bronze 3",
     "Bronze 2",
     "Bronze 1",
@@ -65,8 +65,7 @@ ranks_type = Literal[
     "Diamond 3",
     "Diamond 2",
     "Diamond 1",
-    "Master",
-    "Grandmaster",
+    "Master+",
 ]
 
 
@@ -165,18 +164,30 @@ class Player:
         self.db.connection.commit()
 
     def get_rank(self):
-        rank = "Grandmaster"
-        for i, j in ranks_mmr.items():
-            if self.mmr < j:
+        rank = None
+        for i in ranks_mmr:
+            if self.mmr >= ranks_mmr[i]:
                 rank = i
-                return rank
-
+            else:
+                break 
+        if self.mmr >= ranks_mmr["Master+"]:
+            return "Master+"
+        return rank
+    
     def get_lp(self):
         rank = self.get_rank()
-        if rank is None:
-            rank = "Grandmaster"
-        lp = ranks_mmr[rank] - self.mmr
-        return 100 - lp * 2
+        if self.mmr >= ranks_mmr["Master+"]:
+            return 100 - (ranks_mmr["Master+"]-self.mmr)*2
+        
+        elif rank is None:
+            rank = "Master+"
+        lp = ranks_mmr[rank]+(100) - self.mmr # 100 taken from  -> ranks_mmr["Bronze 1"]-ranks_mmr["Bronze 2"]
+        
+        if lp < 0 and self.mmr < ranks_mmr["Bronze 3"]:
+            lp = ((self.mmr/ranks_mmr["Bronze 3"]) * 100)
+            return int(lp//1)
+
+        return int(100 - lp)*2
 
 
 class Match:
