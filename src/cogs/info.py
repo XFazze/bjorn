@@ -14,19 +14,21 @@ class info(commands.Cog):
 
     @info.command(name="ping", description="Returns the latency of the bot")
     async def ping(self, ctx):
-        await ctx.reply(
+        await ctx.interaction.response.send_message(
             embed=discord.Embed(
                 title=f"Ping is {round(self.bot.latency*1000, 1)} ms", color=0x00FF42
-            )
+            ),
+            ephemeral=True
         )
 
     @info.command(name="uptime", description="Returns the uptime of the bot")
     async def uptime(self, ctx):
         time_difference = datetime.now() - self.start_time
-        await ctx.reply(
+        await ctx.interaction.response.send_message(
             embed=discord.Embed(
                 title=f"Uptime is {str(time_difference).split('.')[0]}", color=0x00FF42
-            )
+            ),
+            ephemeral=True
         )
 
     @info.command(name="bot", description="Returns information about the bot")
