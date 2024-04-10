@@ -165,6 +165,7 @@ class Player:
         self.db.connection.commit()
 
     def get_rank(self):
+        rank = "Bronze"
         for i, j in ranks_mmr.items():
             if self.mmr < j:
                 rank = i
@@ -420,7 +421,6 @@ class PlayersView(discord.ui.View):
                     self.current_sort_embed_index = 1
 
                 await interaction.message.edit(embed=self.current_embed, view=self)
-                await interaction.response.defer()
                 return
 
         self.view_button.callback = view_callback
@@ -721,7 +721,6 @@ class QueueView(discord.ui.View):
                         ).discord_member_object,
                     ),
                 )
-            await interaction.response.defer()
 
         for button in self.buttons:
             button.callback = queue_callback
