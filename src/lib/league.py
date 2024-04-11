@@ -14,7 +14,7 @@ import lib.general as general
 
 
 ranks_mmr = {
-    "Iron+" : 0,
+    "Iron+": 0,
     "Bronze 3": 750,
     "Bronze 2": 800,
     "Bronze 1": 850,
@@ -95,7 +95,8 @@ class Player:
             if discord_name == None:
                 return None
             discord_member_object = next(
-                (m for m in self.bot.get_all_members() if m.name == discord_name), None
+                (m for m in self.bot.get_all_members()
+                 if m.name == discord_name), None
             )
             if discord_member_object is None:
                 return None
@@ -152,20 +153,21 @@ class Player:
             if self.mmr >= ranks_mmr[i]:
                 rank = i
             else:
-                break 
+                break
         if self.mmr >= ranks_mmr["Master+"]:
             return "Master+"
         return rank
-    
+
     def get_lp(self):
         rank = self.get_rank()
         if self.mmr >= ranks_mmr["Master+"]:
             return 100 - (ranks_mmr["Master+"]-self.mmr)*2
-        
+
         elif rank is None:
             rank = "Master+"
-        lp = ranks_mmr[rank]+(100) - self.mmr # 100 taken from  -> ranks_mmr["Bronze 1"]-ranks_mmr["Bronze 2"]
-        
+        # 100 taken from  -> ranks_mmr["Bronze 1"]-ranks_mmr["Bronze 2"]
+        lp = ranks_mmr[rank]+(100) - self.mmr
+
         if lp < 0 and self.mmr < ranks_mmr["Bronze 3"]:
             lp = ((self.mmr/ranks_mmr["Bronze 3"]) * 100)
             return int(lp//1)
@@ -331,7 +333,7 @@ class Database(general.Database):
 
 
 class StartMenuInitView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, bot):
         super().__init__(timeout=2419200)
 
         yes_button = discord.ui.Button(
@@ -355,8 +357,8 @@ class StartMenuInitView(discord.ui.View):
                 for (target, permission) in old_overwrites.items():
                     await new_channel.set_permissions(target=target, overwrite=permission)
 
-                embed = StartMenuEmbed()
-                view = StartMenuView()
+                embed = StartMenuEmbed(bot)
+                view = StartMenuView(bot)
 
                 await new_channel.send(embed=embed, view=view)
 
@@ -365,7 +367,7 @@ class StartMenuInitView(discord.ui.View):
 
 
 class StartMenuEmbed(discord.Embed):
-    def __init__(self):
+    def __init__(self, bot):
         super().__init__(title=f"League customs control panel", color=0xffec00)
 
         self.add_field(
@@ -391,7 +393,7 @@ class StartMenuEmbed(discord.Embed):
 
 
 class StartMenuView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, bot):
         super().__init__(timeout=7200)
 
         self.buttons = [
@@ -419,6 +421,8 @@ class StartMenuView(discord.ui.View):
         ]
 
         async def callback(interaction: discord.Interaction):
+            ctx = commands.Context(
+                bot=bot, view=self, message=interaction.message, interaction=interaction)
             if interaction.data["custom_id"] == "auto_teams":
                 pass
             if interaction.data["custom_id"] == "create_teams":
@@ -460,7 +464,8 @@ class PlayersExtEmbed(discord.Embed):
 
         self.add_field(
             name="Rank",
-            value="\n".join([f"{p.get_rank()} | {p.get_lp()}%" for p in players]),
+            value="\n".join(
+                [f"{p.get_rank()} | {p.get_lp()}%" for p in players]),
         )
         self.set_footer(text="Extended")
 
@@ -492,7 +497,8 @@ class PlayersView(discord.ui.View):
         async def view_callback(interaction: discord.Interaction):
             if interaction.data["custom_id"] == "view":
                 if self.current_embed_index == 0:
-                    self.players = sorted(self.players, key=lambda p: p.discord_name)
+                    self.players = sorted(
+                        self.players, key=lambda p: p.discord_name)
                     self.current_embed = PlayersExtEmbed(self.players)
                     self.current_embed_index = 1
                     self.current_sort_embed_index = 0
@@ -500,7 +506,8 @@ class PlayersView(discord.ui.View):
                     self.sort_button.label = "Name"
 
                 else:
-                    self.players = sorted(self.players, key=lambda p: p.discord_name)
+                    self.players = sorted(
+                        self.players, key=lambda p: p.discord_name)
                     self.current_embed = PlayersEmbed(self.players)
                     self.current_embed_index = 0
                     self.current_sort_embed_index = 1
@@ -700,23 +707,24 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
 
         async def win_callback(interaction: discord.Interaction):
             role = discord.utils.get(interaction.guild.roles, name="ingame")
-            player_ids = [player.discord_id for player in match.team1 + match.team2]
+            player_ids = [
+                player.discord_id for player in match.team1 + match.team2]
 
             if interaction.user != match.creator:
                 return
 
             if interaction.data["custom_id"] == "discard":
-              for player_id in player_ids:
+                for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
+                        await user.remove_roles(role)
 
             if interaction.data["custom_id"] == "left_win":
                 for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
-                        
+                        await user.remove_roles(role)
+
                 match.finish_match(1)
                 match_embed.title = f"Winner: Left Team"
                 await match_message.edit(embed=match_embed)
@@ -724,12 +732,11 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                     view=MatchViewDone(self.bot, match),
                 )
 
-
             if interaction.data["custom_id"] == "right_win":
                 for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
+                        await user.remove_roles(role)
                 match.finish_match(2)
                 match_embed.title = f"Winner: Right Team"
                 await match_message.edit(embed=match_embed)
@@ -786,7 +793,8 @@ class QueueEmbed(discord.Embed):
     ):
         super().__init__(title=f"Queue {len(queue)}p", color=0x00FF42)
         self.creator = creator
-        self.add_field(name="Players", value="\n".join([p.discord_name for p in queue]))
+        self.add_field(name="Players", value="\n".join(
+            [p.discord_name for p in queue]))
         self.add_field(
             name="VC",
             value="\n".join(
@@ -801,7 +809,7 @@ class QueueEmbed(discord.Embed):
 
 
 class QueueView(discord.ui.View):
-    def __init__(self, bot, voice_channel: discord.VoiceChannel,role:discord.Role):
+    def __init__(self, bot, voice_channel: discord.VoiceChannel, role: discord.Role):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
@@ -926,17 +934,18 @@ class QueueControlView(discord.ui.View):
                 return
 
             if interaction.data["custom_id"] == "start" or len(queue_view.queue) == 10:
-                role = discord.utils.get(interaction.guild.roles, name="ingame")
+                role = discord.utils.get(
+                    interaction.guild.roles, name="ingame")
                 if len(queue_view.queue) < 2:
                     await interaction.response.send_message(
                         "Not enough players in queue", ephemeral=True
                     )
                     return
-                
+
                 for user in queue_view.queue:
-                    if role  not in user.roles:
-                            await user.add_roles(role)
-                        
+                    if role not in user.roles:
+                        await user.add_roles(role)
+
                 await interaction.channel.send(f"<@&{role.id}>")
 
                 team1, team2 = generate_teams(
@@ -963,7 +972,8 @@ class QueueControlView(discord.ui.View):
 
                 await self.queue_message.edit(
                     embed=QueueEmbed(
-                        [Player(self.bot, p.id, False) for p in self.queue_view.queue],
+                        [Player(self.bot, p.id, False)
+                         for p in self.queue_view.queue],
                         vc_members_names,
                         Player(
                             self.bot,
@@ -1010,9 +1020,9 @@ async def start_match(
 
     embed = MatchEmbed(team1, team2, creator)
 
-    #await channel.send(
-        #"".join([p.discord_member_object.mention for p in team1 + team2])
-    #)
+    # await channel.send(
+    # "".join([p.discord_member_object.mention for p in team1 + team2])
+    # )
     match_message = await channel.send(embed=embed)
 
     view = MatchControlView(bot, match, match_message, embed)
@@ -1037,8 +1047,10 @@ class FreeEmbed(discord.Embed):
     ):
         super().__init__(title="Create teams", color=0x00FF42)
 
-        self.add_field(name="Team 1", value="\n".join([p.discord_name for p in team1]))
-        self.add_field(name="Team 2", value="\n".join([p.discord_name for p in team2]))
+        self.add_field(name="Team 1", value="\n".join(
+            [p.discord_name for p in team1]))
+        self.add_field(name="Team 2", value="\n".join(
+            [p.discord_name for p in team2]))
         self.set_footer(text=f"Creator: {creator.name}")
 
 
@@ -1200,7 +1212,8 @@ class PlayerMatchesView(discord.ui.View):
 class MmrGraphEmbed(discord.Embed):
     def __init__(self, player: discord.Member):
         super().__init__(title="MMR Graph", color=0x00FF42)
-        self.set_image(url=f"attachment://{os.getenv('LEAGUE_GRAPH_FILENAME')}")
+        self.set_image(
+            url=f"attachment://{os.getenv('LEAGUE_GRAPH_FILENAME')}")
         self.set_footer(text=f"Player: {player.name}")
 
 
@@ -1211,7 +1224,8 @@ def mmr_graph(bot, player: discord.Member):
     ).fetchall()
     df = pd.DataFrame(res)
     fig = px.line(df, x=1, y=0)
-    fig.write_image(os.getenv("LEAGUE_GRAPH_DIR") + os.getenv("LEAGUE_GRAPH_FILENAME"))
+    fig.write_image(os.getenv("LEAGUE_GRAPH_DIR") +
+                    os.getenv("LEAGUE_GRAPH_FILENAME"))
     file = discord.File(
         os.getenv("LEAGUE_GRAPH_DIR") + os.getenv("LEAGUE_GRAPH_FILENAME"),
         os.getenv("LEAGUE_GRAPH_FILENAME"),
@@ -1221,7 +1235,7 @@ def mmr_graph(bot, player: discord.Member):
 
 def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
     num_players = len(players)
-    
+
     if num_players > 10:
         raise ValueError("numplayers > 10")
 
@@ -1231,7 +1245,8 @@ def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
 
     for team1_indices in combinations(range(num_players), team_size):
         team1 = [players[i] for i in team1_indices]
-        team2 = [players[i] for i in range(num_players) if i not in team1_indices]
+        team2 = [players[i]
+                 for i in range(num_players) if i not in team1_indices]
 
         team1_mmr = sum(player.mmr for player in team1)
         team2_mmr = sum(player.mmr for player in team2)

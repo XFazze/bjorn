@@ -22,6 +22,8 @@ from lib.league import (
     PlayersEmbed,
     PlayersView,
     StartMenuInitView,
+    StartMenuEmbed,
+    StartMenuView,
     start_match,
     MmrGraphEmbed,
 )
@@ -49,9 +51,18 @@ class league(commands.Cog):
             value=f"If you press yes the bot will make a copy of this channel (permissions, name and members) and make that a customs hub."
         )
 
-        view = StartMenuInitView()
+        view = StartMenuInitView(self.bot)
 
         await ctx.reply(embed=embed, view=view, ephemeral=True)
+
+    @league.command(
+        name="menu",
+        description="Displays the start menu and information on the league functions."
+    )
+    async def start_menu(self, ctx: commands.Context):
+        embed = StartMenuEmbed(self.bot)
+        view = StartMenuView(self.bot)
+        await ctx.send(embed=embed, view=view)
 
     @league.command(
         name="customs",
@@ -121,7 +132,7 @@ class league(commands.Cog):
         for member in ctx.guild.members:
             if role in member.roles:
                 await member.remove_roles(role)
-        
+
         embed = QueueEmbed([], vc_members_names, ctx.author)
         if ctx.author.voice:
             voice = ctx.author.voice.channel
