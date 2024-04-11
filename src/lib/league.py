@@ -1101,7 +1101,9 @@ def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
         team1_mmr = sum(player.mmr for player in team1)
         team2_mmr = sum(player.mmr for player in team2)
         diff = abs(team1_mmr - team2_mmr)
-
+        
+        if diff < 100:
+            return (team1, team2)
         if diff < best_diff:
             best_diff = diff
             best_teams = (team1, team2)
