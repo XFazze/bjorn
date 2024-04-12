@@ -16,7 +16,7 @@ import lib.general as general
 
 
 ranks_mmr = {
-    "Iron+" : 0,
+    "Iron+": 0,
     "Bronze 3": 700,
     "Bronze 2": 800,
     "Bronze 1": 900,
@@ -172,23 +172,25 @@ class Player:
             if self.mmr >= ranks_mmr[i]:
                 rank = i
             else:
-                break 
+                break
         if self.mmr >= ranks_mmr["Master+"]:
             return "Master+"
         return rank
-    
+
     def get_lp(self):
         rank = self.get_rank()
         if self.mmr >= ranks_mmr["Master+"]:
-            return 100 - (ranks_mmr["Master+"]-self.mmr)
-        
+            return 100 - (ranks_mmr["Master+"] - self.mmr)
+
         elif rank is None:
             rank = "Master+"
-        lp = ranks_mmr[rank]+(100) - self.mmr # 100 taken from  -> ranks_mmr["Bronze 1"]-ranks_mmr["Bronze 2"]
-        
+        lp = (
+            ranks_mmr[rank] + (100) - self.mmr
+        )  # 100 taken from  -> ranks_mmr["Bronze 1"]-ranks_mmr["Bronze 2"]
+
         if lp < 0 and self.mmr < ranks_mmr["Bronze 3"]:
-            lp = ((self.mmr/ranks_mmr["Bronze 3"]) * 100)
-            return int(lp//1)
+            lp = (self.mmr / ranks_mmr["Bronze 3"]) * 100
+            return int(lp // 1)
 
         return int(100 - lp)
 
@@ -592,15 +594,15 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                 for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
+                        await user.remove_roles(role)
                 await self.match_message.delete()
 
             if interaction.data["custom_id"] == "left_win":
                 for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
-                        
+                        await user.remove_roles(role)
+
                 match.finish_match(1)
                 match_embed.title = f"Winner: Left Team"
                 await match_message.edit(embed=match_embed)
@@ -608,12 +610,11 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
                     view=MatchViewDone(self.bot, match),
                 )
 
-
             if interaction.data["custom_id"] == "right_win":
                 for player_id in player_ids:
                     user = interaction.guild.get_member(player_id)
                     if role in user.roles:
-                            await user.remove_roles(role)
+                        await user.remove_roles(role)
                 match.finish_match(2)
                 match_embed.title = f"Winner: Right Team"
                 await match_message.edit(embed=match_embed)
@@ -685,7 +686,7 @@ class QueueEmbed(discord.Embed):
 
 
 class QueueView(discord.ui.View):
-    def __init__(self, bot, voice_channel: discord.VoiceChannel,role:discord.Role):
+    def __init__(self, bot, voice_channel: discord.VoiceChannel, role: discord.Role):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot, "data/league.sqlite")
         self.bot = bot
@@ -818,17 +819,17 @@ class QueueControlView(discord.ui.View):
                     )
                     return
                 await interaction.response.defer()
-                
+
                 for user in queue_view.queue:
-                    if role  not in user.roles:
-                            await user.add_roles(role)
-                        
+                    if role not in user.roles:
+                        await user.add_roles(role)
+
                 await interaction.channel.send(f"<@&{role.id}>")
 
                 team1, team2 = generate_teams(
                     [Player(self.bot, p.id, False) for p in queue_view.queue]
                 )
-                print("g",interaction, interaction.response.is_done())
+                print("g", interaction, interaction.response.is_done())
                 await start_match(
                     team1,
                     team2,
@@ -897,9 +898,9 @@ async def start_match(
 
     embed = MatchEmbed(team1, team2, creator)
 
-    #await channel.send(
-        #"".join([p.discord_member_object.mention for p in team1 + team2])
-    #)
+    # await channel.send(
+    # "".join([p.discord_member_object.mention for p in team1 + team2])
+    # )
     match_message = await channel.send(embed=embed)
 
     view = MatchControlView(bot, match, match_message, embed)
@@ -910,29 +911,26 @@ async def start_match(
     )
     if bettervc_category_obj:
         bettervc_channels = bettervc_category_obj.channels
-        for channel in bettervc_channels:
-            if len(channel.members) == 0 and channel.name[0] != "|":
+        for voice_channel in bettervc_channels:
+            if len(voice_channel.members) == 0 and voice_channel.name[0] != "|":
                 for p in team1:
                     if p.discord_member_object.voice:
-                        await p.discord_member_object.move_to(channel)
+                        await p.discord_member_object.move_to(voice_channel)
                 break
-    
-    #draftlol
+
+    # draftlol
     draftlolws = draftlol.DraftLolWebSocket()
     draftlolws.run()
 
     retries = 0
-    while (not draftlolws.closed and retries < 10):
+    while not draftlolws.closed and retries < 10:
         time.sleep(0.5)
         retries += 1
-    
+
     draftlolws.force_close()
-    draft_message = draftlolws.message #ifall den timear ut, så e failed message preset i draftlolws classen.
+    draft_message = draftlolws.message
+    # ifall den timear ut, så e failed message preset i draftlolws classen.
     await channel.send(draft_message)
-    
-
-
-
 
 
 class FreeEmbed(discord.Embed):
@@ -1123,13 +1121,13 @@ def mmr_graph(bot, player: discord.Member):
 
 def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
     num_players = len(players)
-    
+
     if num_players > 10:
         raise ValueError("numplayers > 10")
 
     team_size = num_players // 2
     best_teams = None
-    best_diff = float('inf')
+    best_diff = float("inf")
 
     for team1_indices in combinations(range(num_players), team_size):
         team1 = [players[i] for i in team1_indices]
@@ -1138,7 +1136,7 @@ def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
         team1_mmr = sum(player.mmr for player in team1)
         team2_mmr = sum(player.mmr for player in team2)
         diff = abs(team1_mmr - team2_mmr)
-        
+
         if diff < 100:
             return (team1, team2)
         if diff < best_diff:
