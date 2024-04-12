@@ -67,7 +67,6 @@ class league(commands.Cog):
         toggle_additional_players = [
             i for i in toggle_additional_players if i is not None
         ]
-
         for player in toggle_additional_players:
             removed = False
             for toggle_player in member_players:
@@ -86,7 +85,15 @@ class league(commands.Cog):
 
         players = [Player(self.bot, i.id) for i in member_players]
         team1, team2 = generate_teams(players)
-        await start_match()
+        await start_match(
+            team1,
+            team2,
+            self.bot,
+            ctx.author,
+            ctx.channel,
+            ctx.interaction,
+            move_players_setting=False,
+        )
 
     @league.command(
         name="queue",
@@ -102,7 +109,7 @@ class league(commands.Cog):
         for member in ctx.guild.members:
             if role in member.roles:
                 await member.remove_roles(role)
-        
+
         embed = QueueEmbed([], vc_members_names, ctx.author)
         if ctx.author.voice:
             voice = ctx.author.voice.channel
