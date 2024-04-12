@@ -2,7 +2,7 @@ from discord.ext import commands
 import discord
 import random
 import math
-from typing import Optional, List, Union, Literal
+from typing import Literal
 
 import lib.persmissions as permissions
 from lib.league import (
@@ -43,14 +43,14 @@ class league(commands.Cog):
     async def customs(
         self,
         ctx: commands.Context,
-        toggle_player_1: Optional[discord.Member],
-        toggle_player_2: Optional[discord.Member],
-        toggle_player_3: Optional[discord.Member],
-        toggle_player_4: Optional[discord.Member],
-        toggle_player_5: Optional[discord.Member],
-        toggle_player_6: Optional[discord.Member],
-        toggle_player_7: Optional[discord.Member],
-        toggle_player_8: Optional[discord.Member],
+        toggle_player_1: discord.Member = None,
+        toggle_player_2: discord.Member = None,
+        toggle_player_3: discord.Member = None,
+        toggle_player_4: discord.Member = None,
+        toggle_player_5: discord.Member = None,
+        toggle_player_6: discord.Member = None,
+        toggle_player_7: discord.Member = None,
+        toggle_player_8: discord.Member = None,
     ):
         member_players = ctx.author.voice.channel.members
 
@@ -67,7 +67,6 @@ class league(commands.Cog):
         toggle_additional_players = [
             i for i in toggle_additional_players if i is not None
         ]
-
         for player in toggle_additional_players:
             removed = False
             for toggle_player in member_players:
@@ -86,7 +85,16 @@ class league(commands.Cog):
 
         players = [Player(self.bot, i.id) for i in member_players]
         team1, team2 = generate_teams(players)
-        await start_match()
+        await ctx.interaction.response.defer()
+        await start_match(
+            team1,
+            team2,
+            self.bot,
+            ctx.author,
+            ctx.channel,
+            ctx.interaction,
+            move_players_setting=False,
+        )
 
     @league.command(
         name="queue",
@@ -102,7 +110,7 @@ class league(commands.Cog):
         for member in ctx.guild.members:
             if role in member.roles:
                 await member.remove_roles(role)
-        
+
         embed = QueueEmbed([], vc_members_names, ctx.author)
         if ctx.author.voice:
             voice = ctx.author.voice.channel
@@ -128,14 +136,14 @@ class league(commands.Cog):
     async def arena(
         self,
         ctx: commands.Context,
-        toggle_player_1: Optional[discord.Member],
-        toggle_player_2: Optional[discord.Member],
-        toggle_player_3: Optional[discord.Member],
-        toggle_player_4: Optional[discord.Member],
-        toggle_player_5: Optional[discord.Member],
-        toggle_player_6: Optional[discord.Member],
-        toggle_player_7: Optional[discord.Member],
-        toggle_player_8: Optional[discord.Member],
+        toggle_player_1: discord.Member = None,
+        toggle_player_2: discord.Member = None,
+        toggle_player_3: discord.Member = None,
+        toggle_player_4: discord.Member = None,
+        toggle_player_5: discord.Member = None,
+        toggle_player_6: discord.Member = None,
+        toggle_player_7: discord.Member = None,
+        toggle_player_8: discord.Member = None,
     ):
         voice_players = ctx.author.voice.channel.members
 
@@ -190,8 +198,8 @@ class league(commands.Cog):
         self,
         ctx: commands.Context,
         member: discord.Member,
-        rank: Optional[ranks_type],
-        mmr: Optional[int],
+        rank: ranks_type = None,
+        mmr: int = None,
     ):
         if rank is not None:
             mmr = ranks_mmr[rank]
@@ -251,15 +259,17 @@ class league(commands.Cog):
     @rating.command(
         name="graph", description="Get a users league customs mmr graph over time"
     )
-    async def mmr_graph(self, ctx: commands.Context, player: discord.Member):
+    async def mmr_graph(self, ctx: commands.Context, player: discord.Member = None):
+        if player is None:
+            player = ctx.author
         file = mmr_graph(self.bot, player)
-        embed = MmrGraphEmbed(player)
+        embed = MmrGraphEmbed(self.bot, player)
         await ctx.reply(file=file, embed=embed)
 
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
         players = self.db.get_all_players()
-        players = sorted(players, key=lambda p: -len(p.matches))
+        players = sorted(players, key=lambda p: -len(p.get_matches()))
 
         embed = PlayersEmbed(players)
         view = PlayersView(players)
@@ -297,10 +307,12 @@ class league(commands.Cog):
         )
 
     @league.command(name="matches", description=f"Displays a players matches")
-    async def matches(self, ctx: commands.Context, member: Optional[discord.Member]):
+    async def matches(self, ctx: commands.Context, member: discord.Member = None):
+        if member is None:
+            member = ctx.author
         player = Player(self.bot, member.id) if member else None
         embeds = []
-        matches = player.matches if player else self.db.get_all_matches()
+        matches = player.get_matches() if player else self.db.get_all_matches()
 
         if len(matches) == 0:
             await ctx.reply(
