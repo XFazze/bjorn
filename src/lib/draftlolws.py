@@ -70,15 +70,3 @@ class DraftLolWebSocket:
     def run(self):
         self.ws.on_open = self.on_open
         self.ws.run_forever()
-
-
-draftlolws = DraftLolWebSocket()
-draftlolws.run()
-
-import time
-retries = 0
-while (not draftlolws.closed and retries < 10):
-    time.sleep(0.5)
-    retries += 1
-
-print(draftlolws.message)
