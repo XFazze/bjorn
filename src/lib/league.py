@@ -9,7 +9,9 @@ import math
 import plotly.express as px
 import pandas as pd
 from itertools import combinations
+import time
 
+import lib.draftlolws as draftlol
 import lib.general as general
 
 
@@ -914,6 +916,23 @@ async def start_match(
                     if p.discord_member_object.voice:
                         await p.discord_member_object.move_to(channel)
                 break
+    
+    #draftlol
+    draftlolws = draftlol.DraftLolWebSocket()
+    draftlolws.run()
+
+    retries = 0
+    while (not draftlolws.closed and retries < 10):
+        time.sleep(0.5)
+        retries += 1
+    
+    draftlolws.force_close()
+    draft_message = draftlolws.message #ifall den timear ut, så e failed message preset i draftlolws classen.
+    await channel.send(draft_message)
+    
+
+
+
 
 
 class FreeEmbed(discord.Embed):

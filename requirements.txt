@@ -70,3 +70,5 @@ tomli==2.0.1
 tzdata==2024.1
 watchfiles==0.15.0
 yarl==1.8.2
+requests==2.31.0
+websocket-client==1.7.0
