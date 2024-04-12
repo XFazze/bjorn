@@ -129,7 +129,7 @@ class Player:
 
         self.discord_id = discord_id
 
-        self.mmr = existing_player[1] if existing_player else 1000
+        self.mmr = math.ceil(existing_player[1]) if existing_player else 1000
         self.wins = existing_player[2] if existing_player else 0
         self.losses = existing_player[3] if existing_player else 0
         self.win_rate = (
@@ -450,34 +450,42 @@ class CustomMatch:
         self.creator = creator
         self.team1 = team1
         self.team2 = team2
+        self.team1_mmr = sum(p.mmr for p in team1)
+        self.team2_mmr = sum(p.mmr for p in team2)
+        self.average_mmr_gains = 10
+        self.mmr_gains_maxed = 1000
+        self.mmr_gains_min = 100
+        self.min_mmr_gains = 10
         self.winner = None
         (
             self.mmr_diff,
-            self.mmr_diff_maxed,
-            self.mmr_diff_powed,
             self.mmr_diff_scaled,
         ) = self.calc_mmr_diff()
         self.timestamp = datetime.datetime.now()
         self.match_id = self.gen_match_id()
 
-    def calc_mmr_diff(self) -> list[int, int, int, int]:
-        mmr_diff = abs(
-            sum([player.mmr for player in self.team1])
-            - sum([player.mmr for player in self.team2])
-        )
+    def calc_mmr_diff(self) -> list[int, int]:
+        mmr_diff = self.team1_mmr - self.team2_mmr
 
         # 0.1 to 1
-        mmr_diff_maxed = max(min(abs(mmr_diff), 100), 10) / 100
+        mmr_diff_maxed = (
+            max(min(abs(mmr_diff), self.mmr_gains_maxed), self.mmr_gains_min)
+            / self.mmr_gains_maxed
+        )
 
         # 0.01 to 1
         mmr_diff_powed = mmr_diff_maxed**2
 
-        # 0 to 2. over 1 when left is higher mmr
-        mmr_diff_scaled = 1 + (
-            0 if mmr_diff == 0 else (mmr_diff / abs(mmr_diff)) * mmr_diff_powed
-        )
-
-        return [mmr_diff, mmr_diff_maxed, mmr_diff_powed, mmr_diff_scaled]
+        # 0 to 40. over 20 when left is higher mmr
+        # mmr_diff_scaled = math.ceil(
+        #    20
+        #    * (
+        #        1
+        #        + (0 if mmr_diff == 0 else (mmr_diff / abs(mmr_diff)) * mmr_diff_powed)
+        #    )
+        # )
+        mmr_diff_scaled = math.ceil((mmr_diff_powed + 1) * self.average_mmr_gains)
+        return [mmr_diff, mmr_diff_scaled]
 
     def gen_match_id(self) -> int:
         res = self.db.cursor.execute("SELECT match_id FROM match")
@@ -490,30 +498,28 @@ class CustomMatch:
         return match_id
 
     def finish_match(self, winner: int):
-        if winner == 1:
-            for player in self.team1:
-                player.mmr += 20 * self.mmr_diff_scaled
-                player.mmr = math.ceil(player.mmr)
-                player.wins += 1
+        #   Predicted team wins -> small mmr gains/losses
+        #   Predicted team loses -> Large mmr gains/losses
+        if (self.team1_mmr > self.team2_mmr and winner == 1) or (
+            self.team1_mmr < self.team2_mmr and winner == 2
+        ):
+            mmr_gains = (
+                self.average_mmr_gains * 2 - self.mmr_diff_scaled + self.min_mmr_gains
+            )
+        else:
+            mmr_gains = self.mmr_diff_scaled + self.min_mmr_gains
 
-            for player in self.team2:
-                player.mmr -= 20 * self.mmr_diff_scaled
-                player.mmr = math.ceil(player.mmr)
+        for player in self.team1 + self.team2:
+            if (player in self.team1 and winner == 1) or (
+                player in self.team2 and winner == 2
+            ):
+                player.mmr += mmr_gains
+                player.wins += 1
+            else:
+                player.mmr -= mmr_gains
                 player.losses += 1
 
-        elif winner == 2:
-
-            for player in self.team1:
-                player.mmr -= 20 * self.mmr_diff_scaled
-                player.mmr = math.ceil(player.mmr)
-                player.losses += 1
-
-            for player in self.team2:
-                player.mmr += 20 * self.mmr_diff_scaled
-                player.mmr = math.ceil(player.mmr)
-                player.wins += 1
-
-        [player.update() for player in self.team1 + self.team2]
+            player.update()
 
         self.db.insert_match(
             Match(
@@ -525,6 +531,7 @@ class CustomMatch:
                 self.timestamp,
             )
         )
+        return mmr_gains
 
 
 class MatchEmbed(discord.Embed):
@@ -587,20 +594,24 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
     async def blue_win_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         await self.remove_ingame_role(interaction)
-        self.match.finish_match(1)
-        self.match_embed.title = f"Winner: Blue Team"
+        mmr_gains = self.match.finish_match(1)
+        self.match_embed.title = f"Winner: Blue Team(+/- {mmr_gains})"
         await self.match_message.edit(embed=self.match_embed)
-        await interaction.followup.edit_message(
+
+        message = await interaction.original_response()
+        await message.edit(
             view=MatchViewDone(self.bot, self.match),
         )
 
     async def red_win_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         await self.remove_ingame_role(interaction)
-        self.match.finish_match(2)
-        self.match_embed.title = f"Winner: Red Team"
+        mmr_gains = self.match.finish_match(2)
+        self.match_embed.title = f"Winner: Red Team(+/- {mmr_gains})"
         await self.match_message.edit(embed=self.match_embed)
-        await interaction.followup.edit_message(
+
+        message = await interaction.original_response()
+        await message.edit(
             view=MatchViewDone(self.bot, self.match),
         )
 
@@ -634,8 +645,10 @@ class MatchViewDone(discord.ui.View):
             row=2,
         )
         rematch_button.callback = self.rematch_callback
+        self.add_item(rematch_button)
 
-    async def win_callback(self, interaction: discord.Interaction):
+    async def rematch_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         await start_match(
             self.match.team1,
             self.match.team2,
@@ -722,7 +735,14 @@ class QueueView(discord.ui.View):
 
 
 class RemovePlayerFromQueueSelect(discord.ui.Select):
-    def __init__(self, players: list[discord.User]):
+    def __init__(
+        self,
+        bot: commands.Bot,
+        players: list[discord.Member],
+        queue_message: discord.Message,
+        queue_view: QueueView,
+        voice: discord.VoiceChannel = None,
+    ):
         options = [discord.SelectOption(label="Noone", description="Remove Noone")] + [
             discord.SelectOption(label=p.name) for p in players
         ]
@@ -734,17 +754,45 @@ class RemovePlayerFromQueueSelect(discord.ui.Select):
             options=options,
             row=2,
         )
+        self.bot = bot
+        self.queue_message = queue_message
+        self.queue_view = queue_view
+        self.voice = voice
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(
-            content=f"Your choice is {self.values[0]}!", ephemeral=True
+        self.queue_view.queue = [
+            p for p in self.queue_view.queue if p.name != interaction.data["values"][0]
+        ]
+        if self.voice:
+            vc_members_names = [m.name for m in self.voice.members]
+        else:
+            vc_members_names = []
+
+        await self.queue_message.edit(
+            embed=QueueEmbed(
+                [Player(self.bot, p.id, False) for p in self.queue_view.queue],
+                vc_members_names,
+                Player(
+                    self.bot,
+                    discord_name=self.queue_message.embeds[0].footer.text[9:],
+                ).get_discord_object(),
+            )
+        )
+        await interaction.response.edit_message(
+            view=QueueControlView(
+                self.bot,
+                self.queue_message,
+                self.queue_view,
+                self.queue_view.queue,
+                voice=self.voice,
+            )
         )
 
 
 class QueueControlView(discord.ui.View):
     def __init__(
         self,
-        bot,
+        bot: commands.Bot,
         queue_message: discord.Message,
         queue_view: QueueView,
         players=[],
@@ -780,8 +828,16 @@ class QueueControlView(discord.ui.View):
         update_remove_list_button.callback = self.update_remove_list_callback
         self.add_item(update_remove_list_button)
 
-        if len(players) > 0:
-            self.buttons.append(RemovePlayerFromQueueSelect(players))
+        if len(self.queue_view.queue) > 0:
+            self.add_item(
+                RemovePlayerFromQueueSelect(
+                    self.bot,
+                    self.queue_view.queue,
+                    self.queue_message,
+                    self.queue_view,
+                    self.voice,
+                )
+            )
 
     async def start_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -790,10 +846,6 @@ class QueueControlView(discord.ui.View):
                 "Not enough players in queue", ephemeral=True
             )
             return
-
-        for user in self.queue_view.queue:
-            if role not in user.roles:
-                await user.add_roles(role)
 
         team1, team2 = generate_teams(
             [Player(self.bot, p.id, False) for p in self.queue_view.queue]
@@ -813,39 +865,8 @@ class QueueControlView(discord.ui.View):
 
     async def update_remove_list_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        remove_player_select = RemovePlayerFromQueueSelect(self.queue_view.queue)
-        remove_player_select.callback = self.remove_player_select_callback
-        self.add_item()
-        await interaction.response.edit_message(
-            view=QueueControlView(
-                self.bot,
-                self.queue_message,
-                self.queue_view,
-                self.queue_view.queue,
-                voice=self.voice,
-            )
-        )
-
-    async def remove_player_select_callback(self, interaction: discord.Interaction):
-        self.queue_view.queue = [
-            p for p in self.queue_view.queue if p.name != interaction.data["values"][0]
-        ]
-        if self.voice:
-            vc_members_names = [m.name for m in self.voice.members]
-        else:
-            vc_members_names = []
-
-        await self.queue_message.edit(
-            embed=QueueEmbed(
-                [Player(self.bot, p.id, False) for p in self.queue_view.queue],
-                vc_members_names,
-                Player(
-                    self.bot,
-                    discord_name=self.queue_message.embeds[0].footer.text[9:],
-                ).get_discord_object(),
-            )
-        )
-        await interaction.response.edit_message(
+        message = await interaction.original_response()
+        await message.edit(
             view=QueueControlView(
                 self.bot,
                 self.queue_message,
@@ -870,14 +891,15 @@ async def start_match(
     embed = MatchEmbed(team1, team2, creator)
 
     role = discord.utils.get(interaction.guild.roles, name="ingame")
+    for player in team1 + team2:
+        player_discord_object = player.get_discord_object()
+        if role not in player_discord_object.roles:
+            await player_discord_object.add_roles(role)
     ingame_ping_message = await interaction.channel.send(f"<@&{role.id}>")
 
     match_message = await channel.send(embed=embed)
     view = MatchControlView(bot, match, match_message, embed, ingame_ping_message)
-    print("WW", interaction, interaction.followup)
-    print("WW", interaction, interaction.followup.send)
     await interaction.followup.send("Match Control", view=view, ephemeral=True)
-    print("WW")
     bettervc_category_obj: discord.CategoryChannel = bot.get_channel(
         int(os.getenv("BETTERVC_CATEGORY_ID"))
     )
@@ -1071,10 +1093,10 @@ class PlayerMatchesView(discord.ui.View):
 
 
 class MmrGraphEmbed(discord.Embed):
-    def __init__(self, player: discord.Member):
-        super().__init__(title="MMR Graph", color=0x00FF42)
+    def __init__(self, bot: commands.Bot, player: discord.Member):
+        super().__init__(title="MMR Graph for {player.name}", color=0x00FF42)
         self.set_image(url=f"attachment://{os.getenv('LEAGUE_GRAPH_FILENAME')}")
-        self.set_footer(text=f"Player: {player.name}")
+        self.set_footer(text=f"Current mmr {Player(bot, discord_id=player.id).mmr} ")
 
 
 def mmr_graph(bot, player: discord.Member):
