@@ -9,11 +9,14 @@ import math
 import plotly.express as px
 import pandas as pd
 from itertools import combinations
+import time
 
+import lib.draftlolws as draftlol
 import lib.general as general
 
 
 ranks_mmr = {
+    "Iron+": 0,
     "Iron+": 0,
     "Bronze 3": 700,
     "Bronze 2": 800,
@@ -880,12 +883,26 @@ async def start_match(
     )
     if bettervc_category_obj and move_players_setting:
         bettervc_channels = bettervc_category_obj.channels
-        for channel in bettervc_channels:
-            if len(channel.members) == 0 and channel.name[0] != "|":
+        for voice_channel in bettervc_channels:
+            if len(voice_channel.members) == 0 and voice_channel.name[0] != "|":
                 for p in team1:
                     if p.get_discord_object().voice:
-                        await p.get_discord_object().move_to(channel)
+                        await p.get_discord_object().move_to(voice_channel)
                 break
+
+    # draftlol
+    draftlolws = draftlol.DraftLolWebSocket()
+    draftlolws.run()
+
+    retries = 0
+    while not draftlolws.closed and retries < 10:
+        time.sleep(0.5)
+        retries += 1
+
+    draftlolws.force_close()
+    draft_message = draftlolws.message
+    # ifall den timear ut, så e failed message preset i draftlolws classen.
+    await channel.send(draft_message)
 
 
 class FreeEmbed(discord.Embed):
@@ -1093,6 +1110,8 @@ def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
         team2_mmr = sum(player.mmr for player in team2)
         diff = abs(team1_mmr - team2_mmr)
 
+        if diff < 100:
+            return (team1, team2)
         if diff < best_diff:
             best_diff = diff
             best_teams = (team1, team2)
