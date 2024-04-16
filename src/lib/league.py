@@ -368,6 +368,7 @@ class PlayersView(discord.ui.View):
         ]
 
         async def view_callback(interaction: discord.Interaction):
+            await interaction.response.defer()
             if interaction.data["custom_id"] == "view":
                 if self.current_embed_index == 0:
                     self.players = sorted(self.players, key=lambda p: p.discord_name)
@@ -384,7 +385,6 @@ class PlayersView(discord.ui.View):
                     self.current_sort_embed_index = 1
                     self.view_button.label = "Extended"
                 await interaction.message.edit(embed=self.current_embed, view=self)
-                await interaction.response.defer()
                 return
 
             if interaction.data["custom_id"] == "sort":
@@ -432,7 +432,6 @@ class PlayersView(discord.ui.View):
                     self.current_sort_embed_index = 1
 
                 await interaction.message.edit(embed=self.current_embed, view=self)
-                await interaction.response.defer()
                 return
 
         self.view_button.callback = view_callback
@@ -1094,7 +1093,7 @@ class PlayerMatchesView(discord.ui.View):
 
 class MmrGraphEmbed(discord.Embed):
     def __init__(self, bot: commands.Bot, player: discord.Member):
-        super().__init__(title="MMR Graph for {player.name}", color=0x00FF42)
+        super().__init__(title=f"MMR Graph for {player.name}", color=0x00FF42)
         self.set_image(url=f"attachment://{os.getenv('LEAGUE_GRAPH_FILENAME')}")
         self.set_footer(text=f"Current mmr {Player(bot, discord_id=player.id).mmr} ")
 

@@ -3,6 +3,7 @@ import discord
 import random
 import math
 from typing import Literal
+import time
 
 import lib.persmissions as permissions
 from lib.league import (
@@ -268,13 +269,18 @@ class league(commands.Cog):
 
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
+        await ctx.interaction.response.send_message(
+            "League player statistics loading", ephemeral=True
+        )
         players = self.db.get_all_players()
         players = sorted(players, key=lambda p: -len(p.get_matches()))
 
         embed = PlayersEmbed(players)
         view = PlayersView(players)
-
-        await ctx.reply(embed=embed, view=view)
+        time.sleep(3)
+        print("33")
+        message = await ctx.interaction.original_response()
+        await message.edit(embed=embed, view=view)
 
     @league.group(name="remove", description=f"Remove commands")
     async def remove(self, ctx: commands.Context):
