@@ -277,8 +277,6 @@ class league(commands.Cog):
 
         embed = PlayersEmbed(players)
         view = PlayersView(players)
-        time.sleep(3)
-        print("33")
         message = await ctx.interaction.original_response()
         await message.edit(embed=embed, view=view)
 
