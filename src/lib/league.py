@@ -218,7 +218,7 @@ class Match:
 
 
 class Database(general.Database):
-    def __init__(self, bot, db_name):
+    def __init__(self, bot: commands.Bot, db_name: str):
         super().__init__(db_name)
         self.create_tables(
             {
@@ -559,7 +559,7 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
         self.match_embed = match_embed
         self.ingame_ping_message = ingame_ping_message
         self.ingame_role = discord.utils.get(
-            self.bot.get_guild(int(os.getenv("LOADING_ID"))).roles, name="ingame"
+            self.bot.get_guild(int(os.environ["LOADING_ID"])).roles, name="ingame"
         )
 
         blue_win_button = discord.ui.Button(
@@ -621,7 +621,7 @@ class MatchControlView(discord.ui.View):  # ändra till playersembed
 
 
 class MatchViewDone(discord.ui.View):
-    def __init__(self, bot, match: CustomMatch):
+    def __init__(self, bot: commands.Bot, match: CustomMatch):
         super().__init__(timeout=7200)
 
         self.current_embed = None
@@ -891,7 +891,7 @@ async def start_match(
     view = MatchControlView(bot, match, match_message, embed, ingame_ping_message)
     await interaction.followup.send("Match Control", view=view, ephemeral=True)
     bettervc_category_obj: discord.CategoryChannel = bot.get_channel(
-        int(os.getenv("BETTERVC_CATEGORY_ID"))
+        int(os.environ["BETTERVC_CATEGORY_ID"])
     )
     if bettervc_category_obj and move_players_setting:
         bettervc_channels = bettervc_category_obj.channels
@@ -903,7 +903,7 @@ async def start_match(
                 break
 
     # draftlol
-    if os.getenv("DEV") != "True":
+    if os.environ["DEV"] != "True":
         draftlolws = draftlol.DraftLolWebSocket()
         draftlolws.run()
 
@@ -932,7 +932,7 @@ class FreeEmbed(discord.Embed):
 
 
 class FreeView(discord.ui.View):
-    def __init__(self, bot, creator: discord.Member):
+    def __init__(self, bot: commands.Bot, creator: discord.Member):
         super().__init__(timeout=10800)
         self.bot = bot
 
@@ -1088,7 +1088,7 @@ class PlayerMatchesView(discord.ui.View):
 class MmrGraphEmbed(discord.Embed):
     def __init__(self, bot: commands.Bot, player: discord.Member):
         super().__init__(title=f"MMR Graph for {player.name}", color=0x00FF42)
-        self.set_image(url=f"attachment://{os.getenv('LEAGUE_GRAPH_FILENAME')}")
+        self.set_image(url=f"attachment://{os.environ['LEAGUE_GRAPH_FILENAME']}")
         self.set_footer(text=f"Current mmr {Player(bot, discord_id=player.id).mmr} ")
 
 
@@ -1099,10 +1099,12 @@ def mmr_graph(bot, player: discord.Member):
     ).fetchall()
     df = pd.DataFrame(res)
     fig = px.line(df, x=1, y=0)
-    fig.write_image(os.getenv("LEAGUE_GRAPH_DIR") + os.getenv("LEAGUE_GRAPH_FILENAME"))
+    fig.write_image(
+        os.environ["LEAGUE_GRAPH_DIR"] + os.environ["LEAGUE_GRAPH_FILENAME"]
+    )
     file = discord.File(
-        os.getenv("LEAGUE_GRAPH_DIR") + os.getenv("LEAGUE_GRAPH_FILENAME"),
-        os.getenv("LEAGUE_GRAPH_FILENAME"),
+        os.environ["LEAGUE_GRAPH_DIR"] + os.environ["LEAGUE_GRAPH_FILENAME"],
+        os.environ["LEAGUE_GRAPH_FILENAME"],
     )
     return file
 

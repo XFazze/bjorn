@@ -28,7 +28,7 @@ from lib.league import (
 
 
 class league(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = Database(bot, "data/league.sqlite")
 
@@ -44,14 +44,14 @@ class league(commands.Cog):
     async def customs(
         self,
         ctx: commands.Context,
-        toggle_player_1: discord.Member = None,
-        toggle_player_2: discord.Member = None,
-        toggle_player_3: discord.Member = None,
-        toggle_player_4: discord.Member = None,
-        toggle_player_5: discord.Member = None,
-        toggle_player_6: discord.Member = None,
-        toggle_player_7: discord.Member = None,
-        toggle_player_8: discord.Member = None,
+        toggle_player_1: discord.Member | None = None,
+        toggle_player_2: discord.Member | None = None,
+        toggle_player_3: discord.Member | None = None,
+        toggle_player_4: discord.Member | None = None,
+        toggle_player_5: discord.Member | None = None,
+        toggle_player_6: discord.Member | None = None,
+        toggle_player_7: discord.Member | None = None,
+        toggle_player_8: discord.Member | None = None,
     ):
         member_players = ctx.author.voice.channel.members
 
@@ -137,14 +137,14 @@ class league(commands.Cog):
     async def arena(
         self,
         ctx: commands.Context,
-        toggle_player_1: discord.Member = None,
-        toggle_player_2: discord.Member = None,
-        toggle_player_3: discord.Member = None,
-        toggle_player_4: discord.Member = None,
-        toggle_player_5: discord.Member = None,
-        toggle_player_6: discord.Member = None,
-        toggle_player_7: discord.Member = None,
-        toggle_player_8: discord.Member = None,
+        toggle_player_1: discord.Member | None = None,
+        toggle_player_2: discord.Member | None = None,
+        toggle_player_3: discord.Member | None = None,
+        toggle_player_4: discord.Member | None = None,
+        toggle_player_5: discord.Member | None = None,
+        toggle_player_6: discord.Member | None = None,
+        toggle_player_7: discord.Member | None = None,
+        toggle_player_8: discord.Member | None = None,
     ):
         voice_players = ctx.author.voice.channel.members
 
@@ -362,5 +362,5 @@ class league(commands.Cog):
         await message.edit(embed=embeds[0], view=view)
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(league(bot))

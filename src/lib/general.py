@@ -3,6 +3,7 @@ from typing import Dict, List
 from discord.ext import commands
 import os
 
+
 class Database:
     def __init__(self, db_path):
         self.connection = sqlite3.connect(db_path)
@@ -18,7 +19,7 @@ class Database:
                 """
             )
 
+
 class Bjorn_cog(commands.Cog):
-    def __init__(self, bot):
-        self.loading_id = int(os.getenv("LOADING_ID"))
-        
+    def __init__(self, bot: commands.Bot):
+        self.loading_id = int(os.environ["LOADING_ID"])

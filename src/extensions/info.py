@@ -5,8 +5,8 @@ import typing
 
 
 class info(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, bot: commands.Bot):
+        self.bot: commands.Bot = bot
         self.start_time = datetime.now()
 
     @commands.hybrid_group(name="info", description="Information commands")
@@ -31,7 +31,7 @@ class info(commands.Cog):
         )
 
     @info.command(name="bot", description="Returns information about the bot")
-    async def bot(self, ctx):
+    async def bot_info(self, ctx):
         bot = await self.bot.application_info()
         embed = discord.Embed(
             title=bot.name, description=self.bot.description, color=0x00FF42
@@ -63,7 +63,8 @@ class info(commands.Cog):
         )
 
     @info.command(name="server", description="Returns information about the server")
-    async def server(self, ctx):
+    async def server(self, ctx: commands.Context):
+        assert ctx.guild is not None
         embed = discord.Embed(
             title=ctx.guild.name, description=ctx.guild.description, color=0x00FF42
         )
@@ -81,7 +82,8 @@ class info(commands.Cog):
         await ctx.reply(embed=embed)
 
     @info.command(name="user", description="Returns information about the user")
-    async def user(self, ctx, user: discord.Member = None):
+    async def user(self, ctx: commands.Context, user: discord.Member | None = None):
+        assert ctx.message.author is discord.Member
         if user is None:
             user = ctx.message.author
         embed = discord.Embed(title=user.name + user.discriminator, color=user.color)
@@ -101,8 +103,9 @@ class info(commands.Cog):
         await ctx.reply(embed=embed)
 
     @info.command(name="avatar", description="Returns user profile picture")
-    async def avatar(self, ctx, user: discord.Member = None):
-        if not user:
+    async def avatar(self, ctx: commands.Context, user: discord.Member | None = None):
+        assert ctx.message.author is discord.Member
+        if user is None:
             user = ctx.message.author
         embed = discord.Embed(
             title=f"Avatar for {user.nick}",
@@ -112,5 +115,5 @@ class info(commands.Cog):
         await ctx.reply(embed=embed)
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(info(bot))

@@ -1,4 +1,4 @@
-import websocket
+from websocket import WebSocketApp
 import base64
 import os
 import json
@@ -21,7 +21,7 @@ class DraftLolWebSocket:
             "Accept-Encoding": "gzip, deflate, br, zstd",
             "Accept-Language": "en,en-US;q=0.9,sv;q=0.6,fr;q=0.5",
         }
-        self.ws = websocket.WebSocketApp(
+        self.ws = WebSocketApp(
             "wss://draftlol.dawe.gg/",
             header=self.headers,
             on_message=self.on_message,

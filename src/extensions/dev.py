@@ -6,7 +6,7 @@ import lib.persmissions as permissions
 
 
 class dev(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @commands.Cog.listener()
@@ -38,14 +38,15 @@ class dev(commands.Cog):
     @commands.hybrid_command(name="devchannel", description="Creates a dev channel")
     @permissions.admin()
     async def devchannel(self, ctx: commands.Context):
+        assert ctx.guild is not None
         category_search = [
             category
             for category in ctx.guild.categories
-            if category.name == os.getenv("DEV_TEST_CATEGORY_NAME")
+            if category.name == os.environ["DEV_TEST_CATEGORY_NAME"]
         ]
         if len(category_search) == 0:
             category = await ctx.guild.create_category(
-                os.getenv("DEV_TEST_CATEGORY_NAME"),
+                os.environ["DEV_TEST_CATEGORY_NAME"],
                 overwrites={
                     ctx.guild.default_role: discord.PermissionOverwrite(
                         read_messages=False
@@ -54,8 +55,9 @@ class dev(commands.Cog):
             )
         else:
             category = category_search[0]
+        assert type(ctx.author) is discord.Member
         channel = await ctx.guild.create_text_channel(
-            os.getenv("DEV_TEST_CHANNEL_NAME") + str(len(category.text_channels)),
+            os.environ["DEV_TEST_CHANNEL_NAME"] + str(len(category.text_channels)),
             overwrites={
                 ctx.guild.default_role: discord.PermissionOverwrite(
                     read_messages=False
@@ -69,5 +71,5 @@ class dev(commands.Cog):
         )
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(dev(bot))

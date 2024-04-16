@@ -4,7 +4,7 @@ from discord.utils import get
 
 
 class betterVC(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.hideChannels.start()
 
@@ -14,8 +14,10 @@ class betterVC(commands.Cog):
     @tasks.loop(seconds=60.0)
     async def hideChannels(self):
         try:
-            guild_object = self.bot.get_guild(int(os.getenv("LOADING_ID")))
-            category_object = get(self.bot.get_all_channels(), id=int(os.getenv("BETTERVC_CATEGORY_ID")))
+            guild_object = self.bot.get_guild(int(os.environ["LOADING_ID"]))
+            category_object = get(
+                self.bot.get_all_channels(), id=int(os.environ["BETTERVC_CATEGORY_ID"])
+            )
 
             empty_channels = []
             for channel in category_object.channels:
@@ -24,7 +26,7 @@ class betterVC(commands.Cog):
 
             showchannel = empty_channels.pop(0)
             await showchannel.set_permissions(guild_object.default_role, overwrite=None)
-        
+
             for hiding_channel in empty_channels:
                 await hiding_channel.set_permissions(
                     guild_object.default_role, read_messages=False
@@ -42,9 +44,9 @@ class betterVC(commands.Cog):
     async def on_voice_state_update(self, member, before, after):
         if after.channel is None:
             return
-        guild_object = self.bot.get_guild(int(os.getenv("LOADING_ID")))
+        guild_object = self.bot.get_guild(int(os.environ["LOADING_ID"]))
         if (
-            after.channel.category_id == int(os.getenv("BETTERVC_CATEGORY_ID"))
+            after.channel.category_id == int(os.environ["BETTERVC_CATEGORY_ID"])
             and len(after.channel.members) == 1
         ):
             category_object = get(
@@ -63,5 +65,5 @@ class betterVC(commands.Cog):
             )
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(betterVC(bot))
