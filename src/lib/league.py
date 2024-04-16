@@ -354,9 +354,35 @@ class PlayersView(discord.ui.View):
         self.view_button = discord.ui.Button(
             label="Extended", style=discord.ButtonStyle.blurple, custom_id="view"
         )
+        self.view_button.callback = self.view_callback
+        self.add_item(self.view_button)
         self.sort_button = discord.ui.Button(
             label="Sort", style=discord.ButtonStyle.blurple, custom_id="sort"
         )
+        self.sort_button.callback = self.sort_callback
+        self.add_item(self.sort_button)
+
+    async def view_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if self.current_embed_index == 0:
+            self.players = sorted(self.players, key=lambda p: p.discord_name)
+            self.current_embed = PlayersExtEmbed(self.players)
+            self.current_embed_index = 1
+            self.current_sort_embed_index = 0
+            self.view_button.label = "Normal"
+            self.sort_button.label = "Name"
+
+        else:
+            self.players = sorted(self.players, key=lambda p: p.discord_name)
+            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed_index = 0
+            self.current_sort_embed_index = 1
+            self.view_button.label = "Extended"
+        message = await interaction.original_response()
+        await message.edit(embed=self.current_embed, view=self)
+
+    async def sort_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         normal_list = [
             sorted(self.players, key=lambda p: p.discord_name),
             sorted(self.players, key=lambda p: -p.win_rate),
@@ -366,78 +392,43 @@ class PlayersView(discord.ui.View):
             sorted(self.players, key=lambda p: -p.mmr),
             sorted(self.players, key=lambda p: p.discord_name),
         ]
+        if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
+            self.sort_button.label = "MMR"
+            self.players = extended_list[0]
+            self.current_embed = PlayersExtEmbed(self.players)
+            self.current_embed_index = 1
+            self.current_sort_embed_index = 1
 
-        async def view_callback(interaction: discord.Interaction):
-            await interaction.response.defer()
-            if interaction.data["custom_id"] == "view":
-                if self.current_embed_index == 0:
-                    self.players = sorted(self.players, key=lambda p: p.discord_name)
-                    self.current_embed = PlayersExtEmbed(self.players)
-                    self.current_embed_index = 1
-                    self.current_sort_embed_index = 0
-                    self.view_button.label = "Normal"
-                    self.sort_button.label = "Name"
+        elif self.current_embed_index == 1 and self.current_sort_embed_index == 1:
+            self.sort_button.label = "Name"
+            self.players = extended_list[1]
+            self.current_embed = PlayersExtEmbed(self.players)
+            self.current_embed_index = 1
+            self.current_sort_embed_index = 0
 
-                else:
-                    self.players = sorted(self.players, key=lambda p: p.discord_name)
-                    self.current_embed = PlayersEmbed(self.players)
-                    self.current_embed_index = 0
-                    self.current_sort_embed_index = 1
-                    self.view_button.label = "Extended"
-                await interaction.message.edit(embed=self.current_embed, view=self)
-                return
+        elif self.current_embed_index == 0 and self.current_sort_embed_index == 1:
+            self.sort_button.label = "Name"
+            self.players = normal_list[0]
+            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed_index = 0
+            self.current_sort_embed_index = 2
 
-            if interaction.data["custom_id"] == "sort":
-                if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
-                    self.sort_button.label = "MMR"
-                    self.players = extended_list[0]
-                    self.current_embed = PlayersExtEmbed(self.players)
-                    self.current_embed_index = 1
-                    self.current_sort_embed_index = 1
+        elif self.current_embed_index == 0 and self.current_sort_embed_index == 2:
+            self.sort_button.label = "Winrate"
+            self.players = normal_list[1]
+            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed_index = 0
+            self.current_sort_embed_index = 3
 
-                elif (
-                    self.current_embed_index == 1 and self.current_sort_embed_index == 1
-                ):
-                    self.sort_button.label = "Name"
-                    self.players = extended_list[1]
-                    self.current_embed = PlayersExtEmbed(self.players)
-                    self.current_embed_index = 1
-                    self.current_sort_embed_index = 0
+        elif self.current_embed_index == 0 and self.current_sort_embed_index == 3:
+            self.sort_button.label = "Matches"
+            self.players = normal_list[2]
+            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed_index = 0
+            self.current_sort_embed_index = 1
 
-                elif (
-                    self.current_embed_index == 0 and self.current_sort_embed_index == 1
-                ):
-                    self.sort_button.label = "Name"
-                    self.players = normal_list[0]
-                    self.current_embed = PlayersEmbed(self.players)
-                    self.current_embed_index = 0
-                    self.current_sort_embed_index = 2
-
-                elif (
-                    self.current_embed_index == 0 and self.current_sort_embed_index == 2
-                ):
-                    self.sort_button.label = "Winrate"
-                    self.players = normal_list[1]
-                    self.current_embed = PlayersEmbed(self.players)
-                    self.current_embed_index = 0
-                    self.current_sort_embed_index = 3
-
-                elif (
-                    self.current_embed_index == 0 and self.current_sort_embed_index == 3
-                ):
-                    self.sort_button.label = "Matches"
-                    self.players = normal_list[2]
-                    self.current_embed = PlayersEmbed(self.players)
-                    self.current_embed_index = 0
-                    self.current_sort_embed_index = 1
-
-                await interaction.message.edit(embed=self.current_embed, view=self)
-                return
-
-        self.view_button.callback = view_callback
-        self.sort_button.callback = view_callback
-        self.add_item(self.view_button)
-        self.add_item(self.sort_button)
+        message = await interaction.original_response()
+        await message.edit(embed=self.current_embed, view=self)
 
 
 class CustomMatch:
@@ -912,17 +903,20 @@ async def start_match(
                 break
 
     # draftlol
-    draftlolws = draftlol.DraftLolWebSocket()
-    draftlolws.run()
+    if os.getenv("DEV") != "True":
+        draftlolws = draftlol.DraftLolWebSocket()
+        draftlolws.run()
 
-    retries = 0
-    while not draftlolws.closed and retries < 10:
-        time.sleep(0.5)
-        retries += 1
+        retries = 0
+        while not draftlolws.closed and retries < 10:
+            time.sleep(0.5)
+            retries += 1
 
-    draftlolws.force_close()
-    draft_message = draftlolws.message
-    # ifall den timear ut, så e failed message preset i draftlolws classen.
+        draftlolws.force_close()
+        draft_message = draftlolws.message
+    else:
+        draft_message = "League draft links \n Not showed when in dev"
+        # ifall den timear ut, så e failed message preset i draftlolws classen.
     await channel.send(draft_message)
 
 
