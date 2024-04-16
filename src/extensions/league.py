@@ -211,7 +211,7 @@ class league(commands.Cog):
         player.mmr = mmr
         player.update()
 
-        await ctx.reply(
+        await ctx.interaction.response.send_message(
             embed=discord.Embed(
                 title=f"{member.name}'s mmr has been set to {rank if rank is not None else mmr}: {mmr}",
                 color=0x00FF42,
@@ -241,7 +241,7 @@ class league(commands.Cog):
             )
 
         elif rating_type == "MMR":
-            await ctx.reply(
+            await ctx.interaction.response.send_message(
                 embed=discord.Embed(
                     title=f"{member.name}'s mmr is {player.mmr}", color=0x00FF42
                 )
@@ -312,6 +312,9 @@ class league(commands.Cog):
 
     @league.command(name="matches", description=f"Displays a players matches")
     async def matches(self, ctx: commands.Context, member: discord.Member = None):
+        await ctx.interaction.response.send_message(
+            "League matches loading", ephemeral=True
+        )
         if member is None:
             member = ctx.author
         player = Player(self.bot, member.id) if member else None
@@ -319,7 +322,8 @@ class league(commands.Cog):
         matches = player.get_matches() if player else self.db.get_all_matches()
 
         if len(matches) == 0:
-            await ctx.reply(
+            message = await ctx.interaction.original_response()
+            await message.edit(
                 embed=discord.Embed(title=f"No matches found", color=0xFF0000)
             )
             return
@@ -344,7 +348,8 @@ class league(commands.Cog):
             embeds.append(embed)
 
         if not embeds:
-            await ctx.reply(
+            message = await ctx.interaction.original_response()
+            await message.edit(
                 embed=discord.Embed(
                     title=f"{member.name} has no matches!", color=0xFF0000
                 )
@@ -353,7 +358,8 @@ class league(commands.Cog):
 
         view = PlayerMatchesView(embeds)
 
-        await ctx.reply(embed=embeds[0], view=view)
+        message = await ctx.interaction.original_response()
+        await message.edit(embed=embeds[0], view=view)
 
 
 async def setup(bot):
