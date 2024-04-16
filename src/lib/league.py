@@ -451,7 +451,7 @@ class CustomMatch:
         self.team2 = team2
         self.team1_mmr = sum(p.mmr for p in team1)
         self.team2_mmr = sum(p.mmr for p in team2)
-        self.average_mmr_gains = 10
+        self.average_mmr_gains = 30
         self.mmr_gains_maxed = 1000
         self.mmr_gains_min = 100
         self.min_mmr_gains = 10
