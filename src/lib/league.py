@@ -362,18 +362,14 @@ class PlayersView(View):
         self.current_sort_embed_index = 1
         self.current_embed = None
         self.players = players
-        self.view_button = Button(
-            label="Extended", style=ButtonStyle.blurple, custom_id="view"
-        )
-        self.view_button.callback = self.view_callback
+        self.view_button = Button(label="Extended", style=ButtonStyle.blurple)
+        self.view_button.callback = self._view_callback
         self.add_item(self.view_button)
-        self.sort_button = Button(
-            label="Sort", style=ButtonStyle.blurple, custom_id="sort"
-        )
-        self.sort_button.callback = self.sort_callback
+        self.sort_button = Button(label="Sort", style=ButtonStyle.blurple)
+        self.sort_button.callback = self._sort_callback
         self.add_item(self.sort_button)
 
-    async def view_callback(self, interaction: Interaction):
+    async def _view_callback(self, interaction: Interaction):
         await interaction.response.defer()
         if self.current_embed_index == 0:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
@@ -392,7 +388,7 @@ class PlayersView(View):
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
 
-    async def sort_callback(self, interaction: Interaction):
+    async def _sort_callback(self, interaction: Interaction):
         await interaction.response.defer()
         normal_list = [
             sorted(self.players, key=lambda p: p.discord_name),
@@ -459,11 +455,11 @@ class CustomMatch:
         (
             self.mmr_diff,
             self.mmr_diff_scaled,
-        ) = self.calc_mmr_diff()
+        ) = self._calc_mmr_diff()
         self.timestamp = datetime.datetime.now()
-        self.match_id = self.gen_match_id()
+        self.match_id = self._gen_match_id()
 
-    def calc_mmr_diff(self) -> list[int, int]:
+    def _calc_mmr_diff(self) -> list[int, int]:
         mmr_diff = self.team1_mmr - self.team2_mmr
 
         # 0.1 to 1
@@ -475,18 +471,10 @@ class CustomMatch:
         # 0.01 to 1
         mmr_diff_powed = mmr_diff_maxed**2
 
-        # 0 to 40. over 20 when left is higher mmr
-        # mmr_diff_scaled = math.ceil(
-        #    20
-        #    * (
-        #        1
-        #        + (0 if mmr_diff == 0 else (mmr_diff / abs(mmr_diff)) * mmr_diff_powed)
-        #    )
-        # )
         mmr_diff_scaled = math.ceil((mmr_diff_powed + 1) * self.average_mmr_gains)
         return [mmr_diff, mmr_diff_scaled]
 
-    def gen_match_id(self) -> int:
+    def _gen_match_id(self) -> int:
         res = self.db.cursor.execute("SELECT match_id FROM match")
 
         match_ids = [i[0] for i in res.fetchall()]
@@ -570,19 +558,19 @@ class MatchControlView(View):  # ändra till playersembed
         )
 
         blue_win_button = Button(label="Blue Win", style=ButtonStyle.green)
-        blue_win_button.callback = self.blue_win_callback
+        blue_win_button.callback = self._blue_win_callback
         self.add_item(blue_win_button)
 
         red_win_button = Button(label="Red Win", style=ButtonStyle.green)
 
-        red_win_button.callback = self.red_win_callback
+        red_win_button.callback = self._red_win_callback
         self.add_item(red_win_button)
 
         discard_button = Button(label="Discard", style=ButtonStyle.red, row=2)
-        discard_button.callback = self.discard_callback
+        discard_button.callback = self._discard_callback
         self.add_item(discard_button)
 
-    async def blue_win_callback(self, interaction: Interaction):
+    async def _blue_win_callback(self, interaction: Interaction):
         await interaction.response.defer()
         await self.remove_ingame_role(interaction)
         mmr_gains = self.match.finish_match(1)
@@ -594,7 +582,7 @@ class MatchControlView(View):  # ändra till playersembed
             view=MatchViewDone(self.bot, self.match),
         )
 
-    async def red_win_callback(self, interaction: Interaction):
+    async def _red_win_callback(self, interaction: Interaction):
         await interaction.response.defer()
         await self.remove_ingame_role(interaction)
         mmr_gains = self.match.finish_match(2)
@@ -606,7 +594,7 @@ class MatchControlView(View):  # ändra till playersembed
             view=MatchViewDone(self.bot, self.match),
         )
 
-    async def discard_callback(self, interaction: Interaction):
+    async def _discard_callback(self, interaction: Interaction):
         await interaction.response.defer()
         await self.remove_ingame_role(interaction)
         await self.match_message.delete()
@@ -624,21 +612,15 @@ class MatchControlView(View):  # ändra till playersembed
 class MatchViewDone(View):
     def __init__(self, bot: commands.Bot, match: CustomMatch):
         super().__init__(timeout=7200)
-
         self.current_embed = None
         self.bot = bot
         self.match = match
 
-        rematch_button = Button(
-            label="Rematch",
-            style=ButtonStyle.blurple,
-            custom_id="rematch",
-            row=2,
-        )
-        rematch_button.callback = self.rematch_callback
+        rematch_button = Button(label="Rematch", style=ButtonStyle.blurple)
+        rematch_button.callback = self._rematch_callback
         self.add_item(rematch_button)
 
-    async def rematch_callback(self, interaction: Interaction):
+    async def _rematch_callback(self, interaction: Interaction):
         await interaction.response.defer()
         await start_match(
             self.match.team1,
@@ -680,14 +662,14 @@ class QueueView(View):
         self.queue: list[Member] = []
 
         join_queue_button = Button(label="Join Queue", style=ButtonStyle.green)
-        join_queue_button.callback = self.join_queue_callback
+        join_queue_button.callback = self._join_queue_callback
         self.add_item(join_queue_button)
 
         leave_queue_button = Button(label="Leave Queue", style=ButtonStyle.red)
-        leave_queue_button.callback = self.leave_queue_callback
+        leave_queue_button.callback = self._leave_queue_callback
         self.add_item(leave_queue_button)
 
-    async def update_queue_embed(self, interaction: Interaction):
+    async def _update_queue_embed(self, interaction: Interaction):
         vc_members_names = (
             [m.name for m in self.voice_channel.members]
             if self.voice_channel != None
@@ -705,18 +687,18 @@ class QueueView(View):
             ),
         )
 
-    async def leave_queue_callback(self, interaction: Interaction):
+    async def _leave_queue_callback(self, interaction: Interaction):
         await interaction.response.defer()
         if interaction.user in self.queue:
             self.queue.remove(interaction.user)
 
-        await self.update_queue_embed(interaction)
+        await self._update_queue_embed(interaction)
 
-    async def join_queue_callback(self, interaction: Interaction):
+    async def _join_queue_callback(self, interaction: Interaction):
         await interaction.response.defer()
         if interaction.user not in self.queue:
             self.queue.append(interaction.user)
-        await self.update_queue_embed(interaction)
+        await self._update_queue_embed(interaction)
 
 
 class RemovePlayerFromQueueSelect(Select):
@@ -768,7 +750,6 @@ class RemovePlayerFromQueueSelect(Select):
                 self.bot,
                 self.queue_message,
                 self.queue_view,
-                self.queue_view.queue,
                 voice=self.voice,
             )
         )
@@ -780,8 +761,7 @@ class QueueControlView(View):
         bot: commands.Bot,
         queue_message: Message,
         queue_view: QueueView,
-        players=[],
-        voice: VoiceChannel = None,
+        voice: VoiceChannel | None = None,
     ):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot, "data/league.sqlite")
@@ -794,7 +774,7 @@ class QueueControlView(View):
             style=ButtonStyle.green,
             row=0,
         )
-        start_button.callback = self.start_callback
+        start_button.callback = self._start_callback
         self.add_item(start_button)
 
         discard_button = Button(
@@ -802,7 +782,7 @@ class QueueControlView(View):
             style=ButtonStyle.red,
             row=0,
         )
-        discard_button.callback = self.discard_callback
+        discard_button.callback = self._discard_callback
         self.add_item(discard_button)
 
         update_remove_list_button = Button(
@@ -810,7 +790,7 @@ class QueueControlView(View):
             style=ButtonStyle.blurple,
             row=3,
         )
-        update_remove_list_button.callback = self.update_remove_list_callback
+        update_remove_list_button.callback = self._update_remove_list_callback
         self.add_item(update_remove_list_button)
 
         if len(self.queue_view.queue) > 0:
@@ -824,7 +804,7 @@ class QueueControlView(View):
                 )
             )
 
-    async def start_callback(self, interaction: Interaction):
+    async def _start_callback(self, interaction: Interaction):
         await interaction.response.defer()
         if len(self.queue_view.queue) < 2:
             await interaction.response.send_message(
@@ -844,11 +824,11 @@ class QueueControlView(View):
             interaction,
         )
 
-    async def discard_callback(self, interaction: Interaction):
+    async def _discard_callback(self, interaction: Interaction):
         await interaction.response.defer()
         await self.queue_message.delete()
 
-    async def update_remove_list_callback(self, interaction: Interaction):
+    async def _update_remove_list_callback(self, interaction: Interaction):
         await interaction.response.defer()
         message = await interaction.original_response()
         await message.edit(
@@ -856,7 +836,6 @@ class QueueControlView(View):
                 self.bot,
                 self.queue_message,
                 self.queue_view,
-                self.queue_view.queue,
                 voice=self.voice,
             )
         )
@@ -916,11 +895,11 @@ async def start_match(
 
 
 class FreeEmbed(Embed):
-    def __init__(self, team1: list[Player], team2: list[Player], creator: Member):
+    def __init__(self, team1: list[Member], team2: list[Member], creator: Member):
         super().__init__(title="Create teams", color=0x00FF42)
 
-        self.add_field(name="Team 1", value="\n".join([p.discord_name for p in team1]))
-        self.add_field(name="Team 2", value="\n".join([p.discord_name for p in team2]))
+        self.add_field(name="Team 1", value="\n".join([p.name for p in team1]))
+        self.add_field(name="Team 2", value="\n".join([p.name for p in team2]))
         self.set_footer(text=f"Creator: {creator.name}")
 
 
@@ -928,104 +907,83 @@ class FreeView(View):
     def __init__(self, bot: commands.Bot, creator: Member):
         super().__init__(timeout=10800)
         self.bot = bot
+        self.creator = creator
+        self.team1: list[Member] = []
+        self.team2: list[Member] = []
 
-        self.buttons = [
-            Button(
-                label="Join team 1",
-                style=ButtonStyle.blurple,
-                custom_id="join_team_1",
+        join_team1_button = Button(label="Join team 1", style=ButtonStyle.blurple)
+        join_team1_button.callback = self._join_team1_callback
+
+        self.add_item(join_team1_button)
+        join_team2_button = Button(label="Join team 2", style=ButtonStyle.blurple)
+        join_team2_button.callback = self._join_team2_callback
+        self.add_item(join_team2_button)
+
+        start_button = Button(label="Start match", style=ButtonStyle.green, row=2)
+        start_button.callback = self._start_callback
+        self.add_item(start_button)
+
+        discard_button = Button(label="Discard", style=ButtonStyle.red, row=2)
+        discard_button.callback = self._discard_callback
+        self.add_item(discard_button)
+
+    async def _update_teams(self, interaction: Interaction):
+        message = await interaction.original_response()
+        await message.edit(
+            embed=FreeEmbed(
+                self.team1,
+                self.team2,
+                self.creator,
             ),
-            Button(
-                label="Join team 2",
-                style=ButtonStyle.blurple,
-                custom_id="join_team_2",
-            ),
-            Button(
-                label="Start match",
-                style=ButtonStyle.green,
-                custom_id="start",
-                row=2,
-            ),
-            Button(
-                label="Discard",
-                style=ButtonStyle.red,
-                custom_id="discard",
-                row=2,
-            ),
-        ]
+            view=self,
+        )
 
-        self.team1 = []
-        self.team2 = []
+    async def _join_team1_callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        if interaction.user in self.team1:
+            self.team1.remove(interaction.user)
+        elif interaction.user in self.team2:
+            self.team2.remove(interaction.user)
+            self.team1.append(interaction.user)
+        else:
+            self.team1.append(interaction.user)
 
-        async def free_callback(interaction: Interaction):
-            if interaction.data["custom_id"] == "join_team_1":
-                if interaction.user in self.team1:
-                    self.team1.remove(interaction.user)
-                elif interaction.user in self.team2:
-                    self.team2.remove(interaction.user)
-                    self.team1.append(interaction.user)
-                else:
-                    self.team1.append(interaction.user)
+        await self._update_teams(interaction)
 
-                await interaction.message.edit(
-                    embed=FreeEmbed(
-                        [Player(self.bot, p.id, False) for p in self.team1],
-                        [Player(self.bot, p.id, False) for p in self.team2],
-                        creator,
-                    ),
-                    view=self,
-                )
-                await interaction.response.defer()
-                return
+    async def _join_team2_callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        if interaction.user in self.team2:
+            self.team2.remove(interaction.user)
+        elif interaction.user in self.team1:
+            self.team1.remove(interaction.user)
+            self.team2.append(interaction.user)
+        else:
+            self.team2.append(interaction.user)
 
-            if interaction.data["custom_id"] == "join_team_2":
-                if interaction.user in self.team2:
-                    self.team2.remove(interaction.user)
-                elif interaction.user in self.team1:
-                    self.team1.remove(interaction.user)
-                    self.team2.append(interaction.user)
-                else:
-                    self.team2.append(interaction.user)
+        await self._update_teams(interaction)
 
-                await interaction.message.edit(
-                    embed=FreeEmbed(
-                        [Player(self.bot, p.id, False) for p in self.team1],
-                        [Player(self.bot, p.id, False) for p in self.team2],
-                        creator,
-                    ),
-                    view=self,
-                )
-                await interaction.response.defer()
-                return
+    async def _start_callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        if len(self.team1) < 1 or len(self.team2) < 1:
+            await interaction.followup.send(
+                "Not enough players in queue", ephemeral=True
+            )
+            return
+        player_team1 = [Player(self.bot, p.id, False) for p in self.team1]
+        player_team2 = [Player(self.bot, p.id, False) for p in self.team2]
 
-            if interaction.data["custom_id"] == "start":
-                await interaction.response.defer()
-                if len(self.team1) < 1 or len(self.team2) < 1:
-                    await interaction.response.send_message(
-                        "Not enough players in queue", ephemeral=True
-                    )
-                    return
-                player_team_1 = [Player(self.bot, p.id, False) for p in self.team1]
-                player_team_2 = [Player(self.bot, p.id, False) for p in self.team2]
+        await start_match(
+            player_team1,
+            player_team2,
+            self.bot,
+            interaction.user,
+            interaction.channel,
+            interaction,
+        )
+        await interaction.message.delete()
 
-                await start_match(
-                    player_team_1,
-                    player_team_2,
-                    self.bot,
-                    interaction.user,
-                    interaction.channel,
-                    interaction,
-                )
-                await interaction.message.delete()
-                return
-
-            if interaction.data["custom_id"] == "discard":
-                await interaction.message.delete()
-                return
-
-        for button in self.buttons:
-            button.callback = free_callback
-            self.add_item(button)
+    async def _discard_callback(self, interaction: Interaction):
+        await interaction.message.delete()
 
 
 class PlayerMatchesView(View):
@@ -1035,21 +993,21 @@ class PlayerMatchesView(View):
         self.current_embed = None
 
         previous_button = Button(label="Previous", style=ButtonStyle.blurple)
-        previous_button.callback = self.previous_callback
+        previous_button.callback = self._previous_callback
         self.add_item(previous_button)
 
         next_button = Button(label="Next", style=ButtonStyle.blurple)
-        next_button.callback = self.next_callback
+        next_button.callback = self._next_callback
         self.add_item(next_button)
 
-    async def previous_callback(self, interaction: Interaction):
+    async def _previous_callback(self, interaction: Interaction):
         await interaction.response.defer()
         self.current_embed = interaction.message.embeds[0]
         self.current_embed = self.embeds[self.embeds.index(self.current_embed) - 1]
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
 
-    async def next_callback(self, interaction: Interaction):
+    async def _next_callback(self, interaction: Interaction):
         await interaction.response.defer()
         self.current_embed = interaction.message.embeds[0]
         self.current_embed = self.embeds[self.embeds.index(self.current_embed) + 1]

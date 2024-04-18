@@ -117,7 +117,7 @@ class league(commands.Cog):
             voice = ctx.author.voice.channel
         else:
             voice = None
-        view = QueueView(self.bot, voice, role)
+        view = QueueView(self.bot, voice)
         message = await ctx.reply(embed=embed, view=view)
 
         view = QueueControlView(self.bot, message, view, voice=voice)
