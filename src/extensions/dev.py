@@ -1,8 +1,10 @@
 import os
-from discord.ext import commands
 import discord
+from discord.ext import commands
+from discord import Role
 
 import lib.persmissions as permissions
+from lib.config import ConfigTables, show_values, set_value, remove_value
 
 
 class dev(commands.Cog):
@@ -69,6 +71,25 @@ class dev(commands.Cog):
         await channel.send(
             embed=discord.Embed(title=f"Created dev channel!", color=0x00FF42)
         )
+
+    @commands.hybrid_group(description="admin manage commands")
+    async def adminmanage(self, ctx: commands.Context):
+        pass
+
+    @adminmanage.command(description="Show the admin roles for the server.")
+    @permissions.admin()
+    async def show_roles(self, ctx: commands.Context):
+        await show_values(self.bot, ctx, ConfigTables.ADMIN, ctx.guild.id)
+
+    @adminmanage.command(description="Set a admin role for the server.")
+    @permissions.admin()
+    async def set_role(self, ctx: commands.Context, role: Role):
+        await set_value(self.bot, ctx, ConfigTables.ADMIN, ctx.guild.id, role.id)
+
+    @adminmanage.command(description="Remove a admin role for the server.")
+    @permissions.admin()
+    async def remove_role(self, ctx: commands.Context, role: Role):
+        await remove_value(self.bot, ctx, ConfigTables.ADMIN, ctx.guild.id, role.id)
 
 
 async def setup(bot: commands.Bot):

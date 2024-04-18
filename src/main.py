@@ -26,8 +26,6 @@ def check_enviroment_variables():
         "PREFIX",
         "LOADING_ID",
         "BETTERVC_CATEGORY_ID",
-        "LOADING_ADMIN_ROLE_ID",
-        "LOADING_PUBLIC_ROLE_ID",
         "DEV_TEST_CATEGORY_NAME",
         "DEV_TEST_CHANNEL_NAME",
         "LEAGUE_GRAPH_DIR",
