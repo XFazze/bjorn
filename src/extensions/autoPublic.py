@@ -1,5 +1,6 @@
-from discord.ext import commands
 import os
+from discord.ext import commands
+from discord import Member
 
 
 class autoPublic(commands.Cog):
@@ -7,8 +8,8 @@ class autoPublic(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_member_join(self, member):
-        if member.guild.id == int(os.environ["LOADING_ID"]):
+    async def on_member_join(self, member: Member):
+        if member.guild.id == member.guild:
             await member.add_roles(
                 member.guild.get_role(int(os.environ["LOADING_PUBLIC_ROLE_ID"]))
             )

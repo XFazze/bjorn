@@ -1,5 +1,6 @@
 import os
 from discord.ext import commands, tasks
+from discord import Member
 from discord.utils import get
 
 
@@ -41,10 +42,11 @@ class betterVC(commands.Cog):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
+    async def on_voice_state_update(self, member: Member, before, after):
         if after.channel is None:
             return
-        guild_object = self.bot.get_guild(int(os.environ["LOADING_ID"]))
+
+        guild_object = member.guild
         if (
             after.channel.category_id == int(os.environ["BETTERVC_CATEGORY_ID"])
             and len(after.channel.members) == 1

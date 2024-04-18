@@ -4,7 +4,7 @@ import os
 
 
 def admin():
-    async def predicate(ctx):
+    async def predicate(ctx: commands.Context):
         return int(os.environ["LOADING_ADMIN_ROLE_ID"]) in [
             role.id for role in ctx.author.roles
         ]
@@ -13,7 +13,7 @@ def admin():
 
 
 def voice():
-    async def predicate(ctx):
+    async def predicate(ctx: commands.Context):
         if not ctx.author.voice:
             await ctx.reply(
                 embed=discord.Embed(
