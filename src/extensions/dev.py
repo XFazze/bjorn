@@ -4,7 +4,7 @@ from discord.ext import commands
 from discord import Role
 
 import lib.persmissions as permissions
-from lib.config import ConfigTables, show_values, set_value, remove_value
+from lib.config import ConfigTables, show_roles, set_value, remove_value
 
 
 class dev(commands.Cog):
@@ -79,7 +79,7 @@ class dev(commands.Cog):
     @adminmanage.command(description="Show the admin roles for the server.")
     @permissions.admin()
     async def show_roles(self, ctx: commands.Context):
-        await show_values(self.bot, ctx, ConfigTables.ADMIN, ctx.guild.id)
+        await show_roles(self.bot, ctx, ConfigTables.ADMIN, ctx.guild.id)
 
     @adminmanage.command(description="Set a admin role for the server.")
     @permissions.admin()

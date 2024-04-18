@@ -1,9 +1,9 @@
-from discord.ext import commands
-import discord
 import random
 import math
 from typing import Literal
-import time
+import discord
+from discord.ext import commands
+from discord import Role
 
 import lib.persmissions as permissions
 from lib.league import (
@@ -26,8 +26,16 @@ from lib.league import (
     MmrGraphEmbed,
 )
 
+from lib.config import (
+    ConfigTables,
+    show_roles,
+    set_value,
+    remove_value,
+    show_roles,
+)
 
-class league(commands.Cog):
+
+class league_cog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = Database(bot)
@@ -91,6 +99,7 @@ class league(commands.Cog):
             team1,
             team2,
             self.bot,
+            ctx.guild,
             ctx.author,
             ctx.channel,
             ctx.interaction,
@@ -361,6 +370,27 @@ class league(commands.Cog):
         message = await ctx.interaction.original_response()
         await message.edit(embed=embeds[0], view=view)
 
+    @commands.hybrid_group(description="ingame role manage commands")
+    async def ingame_role_manage(self, ctx: commands.Context):
+        pass
+
+    @ingame_role_manage.command(description="Show the ingame_role for the server.")
+    @permissions.admin()
+    async def show_ingame_role(self, ctx: commands.Context):
+        await show_roles(self.bot, ctx, ConfigTables.INGAMEROLE, ctx.guild.id)
+
+    @ingame_role_manage.command(description="Set a ingame_role for the server.")
+    @permissions.admin()
+    async def set_ingame_role(self, ctx: commands.Context, role: Role):
+        await set_value(self.bot, ctx, ConfigTables.INGAMEROLE, ctx.guild.id, role.id)
+
+    @ingame_role_manage.command(description="Remove a ingame_role for the server.")
+    @permissions.admin()
+    async def remove_ingame_role(self, ctx: commands.Context, role: Role):
+        await remove_value(
+            self.bot, ctx, ConfigTables.INGAMEROLE, ctx.guild.id, role.id
+        )
+
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(league(bot))
+    await bot.add_cog(league_cog(bot))

@@ -2,7 +2,7 @@ from enum import Enum
 import os
 
 from discord.ext import commands
-from discord import Member, Role, Embed
+from discord import Embed
 
 from lib.general import Database
 
@@ -10,6 +10,8 @@ from lib.general import Database
 class ConfigTables(Enum):
     ROLEONJOIN = "roleonjoin", "guild_id", "role_id"
     ADMIN = "admin", "guild_id", "role_id"
+    BETTERVC = "bettervc", "guild_id", "category_id"
+    INGAMEROLE = "ingame_role", "guild_id", "role_id"
 
     def __init__(self, table, col1, col2):
         self.table = table
@@ -28,23 +30,26 @@ class ConfigDatabase(Database):
 
         self.tables = ConfigTables
 
-    def get_items(self, table: ConfigTables):
+    def get_items(self, table: ConfigTables) -> list[(str, str)]:
         return self.cursor.execute(
             f"SELECT {table.col1}, {table.col2} FROM {table.table}"
         ).fetchall()
 
-    def get_items_by(self, table: ConfigTables, col1: str):
-        return self.cursor.execute(
+    def get_items_by(self, table: ConfigTables, col1: str) -> list[str]:
+        items = self.cursor.execute(
             f"SELECT {table.col1}, {table.col2} FROM {table.table} WHERE {table.col1} = {col1}"
         ).fetchall()
+        return [i[1] for i in items]
 
-    def insert_item(self, table: ConfigTables, col1: str, col2: str):
+    def insert_item(self, table: ConfigTables, col1: str, col2: str) -> None:
         self.cursor.execute(
             f"INSERT INTO {table.table} ({table.col1}, {table.col2}) VALUES ({col1}, {col2})"
         )
         self.connection.commit()
 
-    def delete_item(self, table: ConfigTables, col1: str = None, col2: str = None):
+    def delete_item(
+        self, table: ConfigTables, col1: str = None, col2: str = None
+    ) -> None:
         if col1 is not None and col2 is not None:
             self.cursor.execute(
                 f"DELETE FROM {table.table} WHERE {table.col1} = {col1} AND {table.col2} = {col2} "
@@ -61,7 +66,7 @@ class ConfigDatabase(Database):
         result = self.connection.commit()
 
 
-async def show_values(
+async def show_roles(
     bot: commands.Bot, ctx: commands.Context, table: ConfigTables, key
 ):
     db = ConfigDatabase(bot)
@@ -69,7 +74,23 @@ async def show_values(
     embed = Embed(title=f"Role on join", color=0x00FF42)
     embed.add_field(
         name="Roles",
-        value="\n".join([ctx.guild.get_role(int(r[1])).name for r in roles]),
+        value="\n".join([ctx.guild.get_role(int(r)).name for r in roles]),
+    )
+    await ctx.send(
+        embed=embed,
+        ephemeral=True,
+    )
+
+
+async def show_channel(
+    bot: commands.Bot, ctx: commands.Context, table: ConfigTables, key
+):
+    db = ConfigDatabase(bot)
+    channels = db.get_items_by(table, key)
+    embed = Embed(title=f"Role on join", color=0x00FF42)
+    embed.add_field(
+        name="Channels",
+        value="\n".join([ctx.guild.get_channel(int(c)).name for c in channels]),
     )
     await ctx.send(
         embed=embed,
@@ -82,7 +103,7 @@ async def set_value(
 ):
     db = ConfigDatabase(bot)
     roles = db.get_items_by(table, key)
-    if value in [r[1] for r in roles]:
+    if value in roles:
         await ctx.send(
             embed=Embed(title=f"id: {value} already set", color=0xFF0000),
             ephemeral=True,
@@ -99,7 +120,7 @@ async def set_value(
 async def remove_value(bot: commands.Bot, ctx: commands.Context, table, key, value):
     db = ConfigDatabase(bot)
     roles = db.get_items_by(table, key)
-    if value not in [r[1] for r in roles]:
+    if value not in roles:
         await ctx.send(
             embed=Embed(title=f"id: {value} not added", color=0xFF0000),
             ephemeral=True,

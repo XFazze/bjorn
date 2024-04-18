@@ -18,8 +18,3 @@ class Database:
                     )
                 """
             )
-
-
-class Bjorn_cog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.loading_id = int(os.environ["LOADING_ID"])

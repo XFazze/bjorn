@@ -4,7 +4,7 @@ from discord import Member, Role
 from lib.config import (
     ConfigDatabase,
     ConfigTables,
-    show_values,
+    show_roles,
     set_value,
     remove_value,
     remove_all_values,
@@ -22,7 +22,7 @@ class role_on_join(commands.Cog):
         if roles is None:
             return  # No roleonjoin for this server
         for role in roles:
-            role_obj = member.guild.get_role(int(role[1]))
+            role_obj = member.guild.get_role(int(role))
             await member.add_roles(role_obj)
 
     @commands.hybrid_group(description="roleonjoin commands")
@@ -31,7 +31,7 @@ class role_on_join(commands.Cog):
 
     @roleonjoin.command(description="Show all roleOnJoin roles for the server.")
     async def show_roles(self, ctx: commands.Context):
-        await show_values(self.bot, ctx, ConfigTables.ROLEONJOIN, ctx.guild.id)
+        await show_roles(self.bot, ctx, ConfigTables.ROLEONJOIN, ctx.guild.id)
 
     @roleonjoin.command(description="Set a roleOnJoin role for the server.")
     async def set_role(self, ctx: commands.Context, role: Role):

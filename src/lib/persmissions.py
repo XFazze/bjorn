@@ -8,7 +8,7 @@ def admin():
     async def predicate(ctx: commands.Context):
         db = ConfigDatabase(ctx.bot)
         admin_roles = db.get_items_by(ConfigTables.ADMIN, ctx.guild.id)
-        admin_roles_ids = set([r[1] for r in admin_roles])
+        admin_roles_ids = set(admin_roles)
         user_roles = set([r.id for r in ctx.author.roles])
 
         return (
