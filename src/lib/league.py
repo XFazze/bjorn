@@ -119,7 +119,7 @@ class Player:
         discord_id: int = None,
         discord_name: str = None,
     ):
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
 
         if discord_id != None:
@@ -229,8 +229,8 @@ class Match:
 
 
 class Database(general.Database):
-    def __init__(self, bot: commands.Bot, db_name: str):
-        super().__init__(db_name)
+    def __init__(self, bot: commands.Bot):
+        super().__init__(os.environ["LEAGUE_DB_NAME"])
         self.create_tables(
             {
                 "player": ["discord_id", "mmr", "wins", "losses"],
@@ -440,7 +440,7 @@ class PlayersView(View):
 
 class CustomMatch:
     def __init__(self, bot, creator: Member, team1: list[Player], team2: list[Player]):
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
         self.creator = creator
         self.team1 = team1
@@ -655,7 +655,7 @@ class QueueEmbed(Embed):
 class QueueView(View):
     def __init__(self, bot, voice_channel: VoiceChannel | None):
         super().__init__(timeout=10800)  # I think 3 hours
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
         self.voice_channel = voice_channel
 
@@ -764,7 +764,7 @@ class QueueControlView(View):
         voice: VoiceChannel | None = None,
     ):
         super().__init__(timeout=10800)  # I think 3 hours
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
         self.queue_message = queue_message
         self.queue_view = queue_view
@@ -1023,7 +1023,7 @@ class MmrGraphEmbed(Embed):
 
 
 def mmr_graph(bot, player: Member):
-    db = Database(bot, "data/league.sqlite")
+    db = Database(bot)
     res = db.cursor.execute(
         f"SELECT mmr, timestamp FROM mmr_history WHERE discord_id = {player.id}"
     ).fetchall()
