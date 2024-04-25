@@ -17,4 +17,5 @@ Add `sh` if shell is wanted.
 In .env.secret file.
 
 - TOKEN for discord bot
-- DB for sqlite database location (/data/data.sqlite)
+- DEV
+- TEST_EXTENSION

@@ -1,49 +1,77 @@
-from dotenv import load_dotenv, dotenv_values
+from dotenv import load_dotenv
 import os
 import asyncio
-
+import logging
 import discord
 from discord.ext import commands
-from cogwatch import Watcher
-import logging
 
-load_dotenv(".env")
-load_dotenv(".env.secret")
+# import logging
 
-if not os.path.exists("data"):
-    os.makedirs("data")
 
-if os.getenv("DEV") != "TRUE":
+def setup_logging():
     discord.utils.setup_logging(level=logging.INFO, root=False)
-else:
-    handler = logging.FileHandler(
-        filename="data/discord.log", encoding="utf-8", mode="w"
+
+
+async def load_extensions(bot: commands.Bot, extensions=None):
+    if extensions is None:
+        extensions = ["info", "betterVC", "roleOnJoin", "league", "dev"]
+    print(f"Extensions loaded: {', '.join(extensions)}")
+    for extension in extensions:
+        await bot.load_extension(f"extensions.{extension}")
+
+
+def check_enviroment_variables():
+    enviromental_variables = [
+        "DEV",
+        "PREFIX",
+        "DEV_TEST_CATEGORY_NAME",
+        "DEV_TEST_CHANNEL_NAME",
+        "LEAGUE_GRAPH_DIR",
+        "LEAGUE_GRAPH_FILENAME",
+    ]
+    missing_varaibles = []
+    for var in enviromental_variables:
+        if os.getenv(var) is None:
+            missing_varaibles.append(var)
+    return missing_varaibles
+
+
+async def setup():
+    setup_logging()
+    load_dotenv(".env")
+    load_dotenv(".env.secret")
+
+    missing_variables = check_enviroment_variables()
+    if len(missing_variables) != 0:
+        raise Exception(f"Missing enviroment variables{missing_variables}")
+
+    if not os.path.exists("data"):
+        os.makedirs("data")
+
+    bot = commands.Bot(
+        intents=discord.Intents.all(), command_prefix=os.environ["PREFIX"]
     )
-    discord.utils.setup_logging(level=logging.INFO, root=False, handler=handler)
 
-bot = commands.Bot(intents=discord.Intents.all(), command_prefix=os.getenv("PREFIX"))
+    @bot.event
+    async def on_ready():
+        print(f"We have logged in as {bot.user} with prefix '{os.environ['PREFIX']}'")
 
+    @bot.command()
+    async def alive(ctx):
+        await ctx.send("Is alive!")
 
-@bot.event
-async def on_ready():
-    print(f"We have logged in as {bot.user}")
-
-
-@bot.command()
-async def alive(ctx):
-    await ctx.send("Is alive!")
-
-
-async def main():
-    cogs = ["info", "betterVC", "autoPublic", "league", "dev"]
-    if os.getenv("DEV") != "True":
-        for cog in cogs:
-            await bot.load_extension(f"cogs.{cog}")
-    else:
+    if os.environ["DEV"] == "True":
         print("Dev mode enabled")
-        await bot.load_extension(f"cogs.dev")
-        await bot.load_extension(f"cogs.{os.getenv('TEST_COG')}")
-    await bot.start(os.getenv("TOKEN"))
+        await load_extensions(bot, ["dev", os.environ["TEST_EXTENSION"]])
+    else:
+        await load_extensions(bot)
+    return bot
 
 
-asyncio.run(main())
+async def start_bot():
+    bot = await setup()
+    await bot.start(os.environ["TOKEN"])
+
+
+if __name__ == "__main__":
+    asyncio.run(start_bot())

@@ -1,8 +1,9 @@
-from discord.ext import commands
-import discord
 import random
 import math
-from typing import Optional, List, Union, Literal
+from typing import Literal
+import discord
+from discord.ext import commands
+from discord import Role
 
 import lib.persmissions as permissions
 from lib.league import (
@@ -28,11 +29,19 @@ from lib.league import (
     MmrGraphEmbed,
 )
 
+from lib.config import (
+    ConfigTables,
+    show_roles,
+    set_value,
+    remove_value,
+    show_roles,
+)
 
-class league(commands.Cog):
-    def __init__(self, bot):
+
+class league_cog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
 
     @commands.hybrid_group(name="league", description="League commands")
     async def league(self, ctx: commands.Context): pass
@@ -72,14 +81,14 @@ class league(commands.Cog):
     async def customs(
         self,
         ctx: commands.Context,
-        toggle_player_1: Optional[discord.Member],
-        toggle_player_2: Optional[discord.Member],
-        toggle_player_3: Optional[discord.Member],
-        toggle_player_4: Optional[discord.Member],
-        toggle_player_5: Optional[discord.Member],
-        toggle_player_6: Optional[discord.Member],
-        toggle_player_7: Optional[discord.Member],
-        toggle_player_8: Optional[discord.Member],
+        toggle_player_1: discord.Member | None = None,
+        toggle_player_2: discord.Member | None = None,
+        toggle_player_3: discord.Member | None = None,
+        toggle_player_4: discord.Member | None = None,
+        toggle_player_5: discord.Member | None = None,
+        toggle_player_6: discord.Member | None = None,
+        toggle_player_7: discord.Member | None = None,
+        toggle_player_8: discord.Member | None = None,
     ):
         member_players = ctx.author.voice.channel.members
 
@@ -96,7 +105,6 @@ class league(commands.Cog):
         toggle_additional_players = [
             i for i in toggle_additional_players if i is not None
         ]
-
         for player in toggle_additional_players:
             removed = False
             for toggle_player in member_players:
@@ -116,7 +124,17 @@ class league(commands.Cog):
 
         players = [Player(self.bot, i.id) for i in member_players]
         team1, team2 = generate_teams(players)
-        await start_match()
+        await ctx.interaction.response.defer()
+        await start_match(
+            team1,
+            team2,
+            self.bot,
+            ctx.guild,
+            ctx.author,
+            ctx.channel,
+            ctx.interaction,
+            move_players_setting=False,
+        )
 
     @league.command(
         name="queue",
@@ -138,7 +156,7 @@ class league(commands.Cog):
             voice = ctx.author.voice.channel
         else:
             voice = None
-        view = QueueView(self.bot, voice, role)
+        view = QueueView(self.bot, voice)
         message = await ctx.reply(embed=embed, view=view)
 
         view = QueueControlView(self.bot, message, view, voice=voice)
@@ -158,14 +176,14 @@ class league(commands.Cog):
     async def arena(
         self,
         ctx: commands.Context,
-        toggle_player_1: Optional[discord.Member],
-        toggle_player_2: Optional[discord.Member],
-        toggle_player_3: Optional[discord.Member],
-        toggle_player_4: Optional[discord.Member],
-        toggle_player_5: Optional[discord.Member],
-        toggle_player_6: Optional[discord.Member],
-        toggle_player_7: Optional[discord.Member],
-        toggle_player_8: Optional[discord.Member],
+        toggle_player_1: discord.Member | None = None,
+        toggle_player_2: discord.Member | None = None,
+        toggle_player_3: discord.Member | None = None,
+        toggle_player_4: discord.Member | None = None,
+        toggle_player_5: discord.Member | None = None,
+        toggle_player_6: discord.Member | None = None,
+        toggle_player_7: discord.Member | None = None,
+        toggle_player_8: discord.Member | None = None,
     ):
         voice_players = ctx.author.voice.channel.members
 
@@ -220,8 +238,8 @@ class league(commands.Cog):
         self,
         ctx: commands.Context,
         member: discord.Member,
-        rank: Optional[ranks_type],
-        mmr: Optional[int],
+        rank: ranks_type = None,
+        mmr: int = None,
     ):
         if rank is not None:
             mmr = ranks_mmr[rank]
@@ -232,7 +250,7 @@ class league(commands.Cog):
         player.mmr = mmr
         player.update()
 
-        await ctx.reply(
+        await ctx.interaction.response.send_message(
             embed=discord.Embed(
                 title=f"{member.name}'s mmr has been set to {rank if rank is not None else mmr}: {mmr}",
                 color=0x00FF42,
@@ -262,7 +280,7 @@ class league(commands.Cog):
             )
 
         elif rating_type == "MMR":
-            await ctx.reply(
+            await ctx.interaction.response.send_message(
                 embed=discord.Embed(
                     title=f"{member.name}'s mmr is {player.mmr}", color=0x00FF42
                 )
@@ -282,20 +300,25 @@ class league(commands.Cog):
     @rating.command(
         name="graph", description="Get a users league customs mmr graph over time"
     )
-    async def mmr_graph(self, ctx: commands.Context, player: discord.Member):
+    async def mmr_graph(self, ctx: commands.Context, player: discord.Member = None):
+        if player is None:
+            player = ctx.author
         file = mmr_graph(self.bot, player)
-        embed = MmrGraphEmbed(player)
+        embed = MmrGraphEmbed(self.bot, player)
         await ctx.reply(file=file, embed=embed)
 
     @league.command(name="players", description=f"Displays all players.")
     async def players(self, ctx: commands.Context):
+        await ctx.interaction.response.send_message(
+            "League player statistics loading", ephemeral=True
+        )
         players = self.db.get_all_players()
-        players = sorted(players, key=lambda p: -len(p.matches))
+        players = sorted(players, key=lambda p: -len(p.get_matches()))
 
         embed = PlayersEmbed(players)
         view = PlayersView(players)
-
-        await ctx.reply(embed=embed, view=view)
+        message = await ctx.interaction.original_response()
+        await message.edit(embed=embed, view=view)
 
     @league.group(name="remove", description=f"Remove commands")
     async def remove(self, ctx: commands.Context):
@@ -328,13 +351,19 @@ class league(commands.Cog):
         )
 
     @league.command(name="matches", description=f"Displays a players matches")
-    async def matches(self, ctx: commands.Context, member: Optional[discord.Member]):
+    async def matches(self, ctx: commands.Context, member: discord.Member = None):
+        await ctx.interaction.response.send_message(
+            "League matches loading", ephemeral=True
+        )
+        if member is None:
+            member = ctx.author
         player = Player(self.bot, member.id) if member else None
         embeds = []
-        matches = player.matches if player else self.db.get_all_matches()
+        matches = player.get_matches() if player else self.db.get_all_matches()
 
         if len(matches) == 0:
-            await ctx.reply(
+            message = await ctx.interaction.original_response()
+            await message.edit(
                 embed=discord.Embed(title=f"No matches found", color=0xFF0000)
             )
             return
@@ -360,7 +389,8 @@ class league(commands.Cog):
             embeds.append(embed)
 
         if not embeds:
-            await ctx.reply(
+            message = await ctx.interaction.original_response()
+            await message.edit(
                 embed=discord.Embed(
                     title=f"{member.name} has no matches!", color=0xFF0000
                 )
@@ -369,8 +399,30 @@ class league(commands.Cog):
 
         view = PlayerMatchesView(embeds)
 
-        await ctx.reply(embed=embeds[0], view=view)
+        message = await ctx.interaction.original_response()
+        await message.edit(embed=embeds[0], view=view)
+
+    @commands.hybrid_group(description="ingame role manage commands")
+    async def ingame_role_manage(self, ctx: commands.Context):
+        pass
+
+    @ingame_role_manage.command(description="Show the ingame_role for the server.")
+    @permissions.admin()
+    async def show_ingame_role(self, ctx: commands.Context):
+        await show_roles(self.bot, ctx, ConfigTables.INGAMEROLE, ctx.guild.id)
+
+    @ingame_role_manage.command(description="Set a ingame_role for the server.")
+    @permissions.admin()
+    async def set_ingame_role(self, ctx: commands.Context, role: Role):
+        await set_value(self.bot, ctx, ConfigTables.INGAMEROLE, ctx.guild.id, role.id)
+
+    @ingame_role_manage.command(description="Remove a ingame_role for the server.")
+    @permissions.admin()
+    async def remove_ingame_role(self, ctx: commands.Context, role: Role):
+        await remove_value(
+            self.bot, ctx, ConfigTables.INGAMEROLE, ctx.guild.id, role.id
+        )
 
 
-async def setup(bot):
-    await bot.add_cog(league(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(league_cog(bot))
