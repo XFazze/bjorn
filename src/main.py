@@ -14,7 +14,7 @@ def setup_logging():
 
 async def load_extensions(bot: commands.Bot, extensions=None):
     if extensions is None:
-        extensions = ["info", "betterVC", "autoPublic", "league", "dev"]
+        extensions = ["info", "betterVC", "roleOnJoin", "league", "dev"]
     print(f"Extensions loaded: {', '.join(extensions)}")
     for extension in extensions:
         await bot.load_extension(f"extensions.{extension}")
@@ -24,13 +24,6 @@ def check_enviroment_variables():
     enviromental_variables = [
         "DEV",
         "PREFIX",
-        "LOADING_ID",
-        "BETTERVC_CATEGORY_ID",
-        "LOADING_ADMIN_ROLE_ID",
-        "LOADING_ACTIVE_ROLE_ID",
-        "LOADING_INACTIVE_ROLE_ID",
-        "LOADING_INACTIVE_ROLE_ID",
-        "LOADING_PUBLIC_ROLE_ID",
         "DEV_TEST_CATEGORY_NAME",
         "DEV_TEST_CHANNEL_NAME",
         "LEAGUE_GRAPH_DIR",
@@ -75,10 +68,10 @@ async def setup():
     return bot
 
 
-async def start_bot(bot: commands.Bot):
+async def start_bot():
+    bot = await setup()
     await bot.start(os.environ["TOKEN"])
 
 
 if __name__ == "__main__":
-    bot = asyncio.run(setup())
-    asyncio.run(start_bot(bot))
+    asyncio.run(start_bot())

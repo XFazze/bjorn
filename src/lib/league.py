@@ -12,6 +12,7 @@ from discord import (
     TextChannel,
     CategoryChannel,
     SelectOption,
+    Guild,
 )
 from discord.ui import Button, View, Select
 from discord.ext import commands
@@ -22,6 +23,7 @@ import pandas as pd
 from itertools import combinations
 import time
 
+from lib.config import ConfigDatabase, ConfigTables
 import lib.draftlolws as draftlol
 import lib.general as general
 
@@ -119,7 +121,7 @@ class Player:
         discord_id: int = None,
         discord_name: str = None,
     ):
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
 
         if discord_id != None:
@@ -229,8 +231,8 @@ class Match:
 
 
 class Database(general.Database):
-    def __init__(self, bot: commands.Bot, db_name: str):
-        super().__init__(db_name)
+    def __init__(self, bot: commands.Bot):
+        super().__init__(os.environ["LEAGUE_DB_NAME"])
         self.create_tables(
             {
                 "player": ["discord_id", "mmr", "wins", "losses"],
@@ -440,7 +442,7 @@ class PlayersView(View):
 
 class CustomMatch:
     def __init__(self, bot, creator: Member, team1: list[Player], team2: list[Player]):
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
         self.creator = creator
         self.team1 = team1
@@ -540,10 +542,11 @@ class MatchControlView(View):  # ändra till playersembed
     def __init__(
         self,
         bot: discord.client.Client,
+        guild: Guild,
         match: CustomMatch,
         match_message: Message,
         match_embed: Embed,
-        ingame_ping_message: Message,
+        ingame_ping_message: Message | None,
     ):
         super().__init__(timeout=7200)
 
@@ -553,9 +556,12 @@ class MatchControlView(View):  # ändra till playersembed
         self.match_message = match_message
         self.match_embed = match_embed
         self.ingame_ping_message = ingame_ping_message
-        self.ingame_role = discord.utils.get(
-            self.bot.get_guild(int(os.environ["LOADING_ID"])).roles, name="ingame"
-        )
+        config = ConfigDatabase(bot)
+        ingame_role = config.get_items_by(ConfigTables.INGAMEROLE, guild.id)
+        if len(ingame_role) < 0:
+            self.ingame_role = guild.get_role(ingame_role[0])
+        else:
+            self.ingame_role = None
 
         blue_win_button = Button(label="Blue Win", style=ButtonStyle.green)
         blue_win_button.callback = self._blue_win_callback
@@ -598,6 +604,8 @@ class MatchControlView(View):  # ändra till playersembed
         await interaction.response.defer()
         await self.remove_ingame_role(interaction)
         await self.match_message.delete()
+        # if self.ingame_ping_message is not None:
+        #    self.ingame_ping_message.delete()
 
     async def remove_ingame_role(self, interaction: Interaction):
         player_ids = [
@@ -605,7 +613,8 @@ class MatchControlView(View):  # ändra till playersembed
         ]
         for player_id in player_ids:
             user = interaction.guild.get_member(player_id)
-            if self.ingame_role in user.roles:
+
+            if self.ingame_role and self.ingame_role in user.roles:
                 await user.remove_roles(self.ingame_role)
 
 
@@ -626,6 +635,7 @@ class MatchViewDone(View):
             self.match.team1,
             self.match.team2,
             self.bot,
+            interaction.guild,
             self.match.creator,
             interaction.channel,
             interaction,
@@ -655,7 +665,7 @@ class QueueEmbed(Embed):
 class QueueView(View):
     def __init__(self, bot, voice_channel: VoiceChannel | None):
         super().__init__(timeout=10800)  # I think 3 hours
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
         self.voice_channel = voice_channel
 
@@ -764,7 +774,7 @@ class QueueControlView(View):
         voice: VoiceChannel | None = None,
     ):
         super().__init__(timeout=10800)  # I think 3 hours
-        self.db = Database(bot, "data/league.sqlite")
+        self.db = Database(bot)
         self.bot = bot
         self.queue_message = queue_message
         self.queue_view = queue_view
@@ -819,6 +829,7 @@ class QueueControlView(View):
             team1,
             team2,
             self.bot,
+            interaction.guild,
             interaction.user,
             interaction.channel,
             interaction,
@@ -844,7 +855,8 @@ class QueueControlView(View):
 async def start_match(
     team1: list[Player],
     team2: list[Player],
-    bot,
+    bot: commands.Bot,
+    guild: Guild,
     creator: Member,
     channel: TextChannel,
     interaction: Interaction,
@@ -853,21 +865,26 @@ async def start_match(
     match = CustomMatch(bot, creator, team1, team2)
 
     embed = MatchEmbed(team1, team2, creator)
-
-    role = discord.utils.get(interaction.guild.roles, name="ingame")
-    for player in team1 + team2:
-        player_discord_object = player.get_discord_object()
-        if role not in player_discord_object.roles:
-            await player_discord_object.add_roles(role)
-    ingame_ping_message = await interaction.channel.send(f"<@&{role.id}>")
-
+    config = ConfigDatabase(bot)
+    ingame_role = config.get_items_by(ConfigTables.INGAMEROLE, guild.id)
+    print(ingame_role)
+    if len(ingame_role) > 0:
+        ingame_role = guild.get_role(ingame_role[0])
+        for player in team1 + team2:
+            player_discord_object = player.get_discord_object()
+            if ingame_role not in player_discord_object.roles:
+                await player_discord_object.add_roles(ingame_role)
+        ingame_ping_message = await interaction.channel.send(f"<@&{ingame_role.id}>")
+    else:
+        ingame_ping_message = None
     match_message = await channel.send(embed=embed)
-    view = MatchControlView(bot, match, match_message, embed, ingame_ping_message)
-    await interaction.followup.send("Match Control", view=view, ephemeral=True)
-    bettervc_category_obj: CategoryChannel = bot.get_channel(
-        int(os.environ["BETTERVC_CATEGORY_ID"])
+    view = MatchControlView(
+        bot, guild, match, match_message, embed, ingame_ping_message
     )
-    if bettervc_category_obj and move_players_setting:
+    await interaction.followup.send("Match Control", view=view, ephemeral=True)
+    categories = config.get_items_by(ConfigTables.BETTERVC, guild.id)
+    if len(categories) != 0 and move_players_setting:
+        bettervc_category_obj = bot.get_channel(int(categories[0]))
         bettervc_channels = bettervc_category_obj.channels
         for voice_channel in bettervc_channels:
             if len(voice_channel.members) == 0 and voice_channel.name[0] != "|":
@@ -976,6 +993,7 @@ class FreeView(View):
             player_team1,
             player_team2,
             self.bot,
+            interaction.guild,
             interaction.user,
             interaction.channel,
             interaction,
@@ -1023,7 +1041,7 @@ class MmrGraphEmbed(Embed):
 
 
 def mmr_graph(bot, player: Member):
-    db = Database(bot, "data/league.sqlite")
+    db = Database(bot)
     res = db.cursor.execute(
         f"SELECT mmr, timestamp FROM mmr_history WHERE discord_id = {player.id}"
     ).fetchall()

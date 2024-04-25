@@ -1,12 +1,12 @@
-import sqlite3
 from typing import Dict, List
 from discord.ext import commands
+import sqlite3
 import os
 
 
 class Database:
     def __init__(self, db_path):
-        self.connection = sqlite3.connect(db_path)
+        self.connection = sqlite3.connect(os.environ["DATA_DIR"] + db_path + ".sqlite")
         self.cursor = self.connection.cursor()
 
     def create_tables(self, tables: Dict[str, List[str]]):
@@ -18,8 +18,3 @@ class Database:
                     )
                 """
             )
-
-
-class Bjorn_cog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.loading_id = int(os.environ["LOADING_ID"])

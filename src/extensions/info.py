@@ -31,7 +31,7 @@ class info(commands.Cog):
         )
 
     @info.command(name="bot", description="Returns information about the bot")
-    async def bot_info(self, ctx):
+    async def bbot_info(self, ctx):
         bot = await self.bot.application_info()
         embed = discord.Embed(
             title=bot.name, description=self.bot.description, color=0x00FF42
