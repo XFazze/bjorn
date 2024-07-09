@@ -44,67 +44,6 @@ class league_cog(commands.Cog):
     async def league(self, ctx: commands.Context):
         pass
 
-    @league.command(
-        name="customs",
-        description="Creates a league custom match instance with teams from the current voice channel.",
-    )
-    @permissions.voice()
-    async def customs(
-        self,
-        ctx: commands.Context,
-        toggle_player_1: discord.Member | None = None,
-        toggle_player_2: discord.Member | None = None,
-        toggle_player_3: discord.Member | None = None,
-        toggle_player_4: discord.Member | None = None,
-        toggle_player_5: discord.Member | None = None,
-        toggle_player_6: discord.Member | None = None,
-        toggle_player_7: discord.Member | None = None,
-        toggle_player_8: discord.Member | None = None,
-    ):
-        member_players = ctx.author.voice.channel.members
-
-        toggle_additional_players = [
-            toggle_player_1,
-            toggle_player_2,
-            toggle_player_3,
-            toggle_player_4,
-            toggle_player_5,
-            toggle_player_6,
-            toggle_player_7,
-            toggle_player_8,
-        ]
-        toggle_additional_players = [
-            i for i in toggle_additional_players if i is not None
-        ]
-        for player in toggle_additional_players:
-            removed = False
-            for toggle_player in member_players:
-                if toggle_player.id == player.id:
-                    member_players.remove(toggle_player)
-                    removed = True
-            if not removed:
-                if player not in member_players:
-                    member_players.append(player)
-
-        if len(member_players) < 2:
-            await ctx.reply(
-                embed=discord.Embed(title=f"Not enough players!", color=0xFF0000)
-            )
-            return
-
-        players = [Player(self.bot, i.id) for i in member_players]
-        team1, team2 = generate_teams(players)
-        await ctx.interaction.response.defer()
-        await start_match(
-            team1,
-            team2,
-            self.bot,
-            ctx.guild,
-            ctx.author,
-            ctx.channel,
-            ctx.interaction,
-            move_players_setting=False,
-        )
 
     @league.command(
         name="queue",
