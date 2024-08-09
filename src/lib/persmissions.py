@@ -19,6 +19,20 @@ def admin():
     return commands.check(predicate)
 
 
+def jar():
+    async def predicate(ctx: commands.Context):
+        db = ConfigDatabase(ctx.bot)
+        jar_roles = db.get_items_by(ConfigTables.JARPERMISSIONS, ctx.guild.id)
+        jar_roles_ids = set(jar_roles)
+        user_roles = set([r.id for r in ctx.author.roles])
+
+        return (
+            len(jar_roles_ids.intersection(user_roles)) != 0 or len(jar_roles_ids) == 0
+        )
+
+    return commands.check(predicate)
+
+
 def voice():
     async def predicate(ctx: commands.Context):
         if not ctx.author.voice:

@@ -12,7 +12,7 @@ class ConfigTables(Enum):
     ADMIN = "admin", "guild_id", "role_id"
     BETTERVC = "bettervc", "guild_id", "category_id"
     INGAMEROLE = "ingame_role", "guild_id", "role_id"
-    JARPERMISSIONS = "jar_permissions", "guild_id", "user_id"
+    JARPERMISSIONS = "jar_permissions", "guild_id", "role_id"
 
     def __init__(self, table, col1, col2):
         self.table = table
