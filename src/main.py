@@ -14,7 +14,7 @@ def setup_logging():
 
 async def load_extensions(bot: commands.Bot, extensions=None):
     if extensions is None:
-        extensions = ["info", "betterVC", "roleOnJoin", "league", "dev"]
+        extensions = ["info", "betterVC", "roleOnJoin", "league", "dev", "reactionRoles"]
     print(f"Extensions loaded: {', '.join(extensions)}")
     for extension in extensions:
         await bot.load_extension(f"extensions.{extension}")

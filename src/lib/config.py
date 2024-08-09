@@ -12,7 +12,11 @@ class ConfigTables(Enum):
     ADMIN = "admin", "guild_id", "role_id"
     BETTERVC = "bettervc", "guild_id", "category_id"
     INGAMEROLE = "ingame_role", "guild_id", "role_id"
-    JARPERMISSIONS = "jar_permissions", "guild_id", "role_id"
+    REACTIONROLES = (
+        "reaction_roles_message_id",
+        "message_idaemoji_id",
+        "role_id",
+    )  # Column 1 is combined message_id and emoji_id with a "a" in between ex "1271497554378358929a802299956299169845"
 
     def __init__(self, table, col1, col2):
         self.table = table
