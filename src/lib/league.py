@@ -123,10 +123,16 @@ class Player:
     ):
         self.db = Database(bot)
         self.bot = bot
+        self.user_exists = False  # If the user has not been deleted
 
         if discord_id != None:
             self.discord_id = discord_id
-            self.discord_name = self.bot.get_user(discord_id).name
+            user = self.bot.get_user(discord_id)
+            if user != None:  # In case user doesnt exists
+                self.discord_name = user.name
+                self.user_exists = True
+            else:
+                return
         elif discord_name != None:
             discord_member_object = next(
                 (m for m in self.bot.get_all_members() if m.name == discord_name), None
@@ -218,7 +224,7 @@ class Match:
         match_id: int,
         team1: list[Player],
         team2: list[Player],
-        winner: int,
+        winner: int,  # 1 or 2
         mmr_diff: int,
         timestamp: datetime.datetime,
     ):
@@ -291,7 +297,11 @@ class Database(general.Database):
 
     def get_all_players(self):
         res = self.cursor.execute(f"SELECT discord_id FROM player").fetchall()
-        return [Player(self.bot, i[0]) for i in res]
+        players = [Player(self.bot, discord_id=i[0]) for i in res]
+        players = [
+            player for player in players if player.user_exists
+        ]  # Removes deleted users
+        return players
 
     def insert_match(self, match: Match):
         team1_string = "".join([str(player.discord_id) + " " for player in match.team1])
@@ -326,7 +336,7 @@ class Database(general.Database):
         self.connection.commit()
 
 
-class PlayersEmbed(Embed):
+class StatisticsGeneralEmbed(Embed):
     def __init__(self, players: list[Player]):
         super().__init__(title=f"Players", color=0x00FF42)
 
@@ -341,7 +351,7 @@ class PlayersEmbed(Embed):
         self.set_footer(text="Normal")
 
 
-class PlayersExtEmbed(Embed):
+class StatisticsGeneralExtEmbed(Embed):
     def __init__(self, players: list[Player]):
         super().__init__(title=f"Players", color=0x00FF42)
 
@@ -356,7 +366,7 @@ class PlayersExtEmbed(Embed):
         self.set_footer(text="Extended")
 
 
-class PlayersView(View):
+class StatisticsGeneralView(View):
     def __init__(self, players: list[Player]):
         super().__init__(timeout=7200)
 
@@ -375,7 +385,7 @@ class PlayersView(View):
         await interaction.response.defer()
         if self.current_embed_index == 0:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
-            self.current_embed = PlayersExtEmbed(self.players)
+            self.current_embed = StatisticsGeneralExtEmbed(self.players)
             self.current_embed_index = 1
             self.current_sort_embed_index = 0
             self.view_button.label = "Normal"
@@ -383,7 +393,7 @@ class PlayersView(View):
 
         else:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
-            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
             self.view_button.label = "Extended"
@@ -404,40 +414,114 @@ class PlayersView(View):
         if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
             self.sort_button.label = "MMR"
             self.players = extended_list[0]
-            self.current_embed = PlayersExtEmbed(self.players)
+            self.current_embed = StatisticsGeneralExtEmbed(self.players)
             self.current_embed_index = 1
             self.current_sort_embed_index = 1
 
         elif self.current_embed_index == 1 and self.current_sort_embed_index == 1:
             self.sort_button.label = "Name"
             self.players = extended_list[1]
-            self.current_embed = PlayersExtEmbed(self.players)
+            self.current_embed = StatisticsGeneralExtEmbed(self.players)
             self.current_embed_index = 1
             self.current_sort_embed_index = 0
 
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 1:
             self.sort_button.label = "Name"
             self.players = normal_list[0]
-            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players)
             self.current_embed_index = 0
             self.current_sort_embed_index = 2
 
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 2:
             self.sort_button.label = "Winrate"
             self.players = normal_list[1]
-            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players)
             self.current_embed_index = 0
             self.current_sort_embed_index = 3
 
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 3:
             self.sort_button.label = "Matches"
             self.players = normal_list[2]
-            self.current_embed = PlayersEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
 
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
+
+
+class StatisticsTeamatesEnemiesEmbed(Embed):
+    def __init__(
+        self,
+        player_winrate: int,
+        title: str,
+        player_stats: list[dict[str, str]],
+    ):
+        super().__init__(title=title, color=0x00FF42)
+
+        self.add_field(
+            name="Name", value="\n".join([player["name"] for player in player_stats])
+        )
+        self.add_field(
+            name="Win rate",
+            value="\n".join(
+                [
+                    f"{((player['wins'] /(1 if player['losses'] + player['wins'] == 0 else player['losses'] + player['wins']))*100):.1f}%"
+                    for player in player_stats
+                ]
+            ),
+        )
+        self.add_field(
+            name="Matches",
+            value="\n".join(
+                [str(player["losses"] + player["wins"]) for player in player_stats]
+            ),
+        )
+        self.set_footer(text="Average winrate: " + str(round(player_winrate)) + "%")
+
+
+class StatisticsTeamatesEnemiesView(View):
+    def __init__(
+        self,
+        player_winrate: int,
+        teamates: list[dict[str, str]],
+        enemies: list[dict[str, str]],
+        target_player_name: str,
+    ):
+        super().__init__(timeout=7200)
+        self.player_winrate = player_winrate
+        self.teamates = teamates
+        self.enemies = enemies
+        self.target_player_name = target_player_name
+        self.sort_button = Button(label="Enemies", style=ButtonStyle.blurple)
+        self.sort_button.callback = self._change_callback
+        self.add_item(self.sort_button)
+
+    async def _change_callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        message = await interaction.original_response()
+        if self.sort_button.label == "Enemies":
+            self.sort_button.label = "Teamates"
+            await message.edit(
+                content="",
+                embed=StatisticsTeamatesEnemiesEmbed(
+                    self.player_winrate,
+                    self.target_player_name + " Enemies statistics",
+                    self.enemies,
+                ),
+                view=self,
+            )
+        else:
+            self.sort_button.label = "Enemies"
+            await message.edit(
+                content="",
+                embed=StatisticsTeamatesEnemiesEmbed(
+                    self.player_winrate,
+                    self.target_player_name + " Teamates statistics",
+                    self.teamates,
+                ),
+                view=self,
+            )
 
 
 class CustomMatch:
