@@ -8,19 +8,31 @@ from discord.ext import commands
 # import logging
 
 
-def setup_logging():
+def setup_logging() -> None:
     discord.utils.setup_logging(level=logging.INFO, root=False)
 
 
-async def load_extensions(bot: commands.Bot, extensions=None):
+async def load_extensions(bot: commands.Bot, extensions=None) -> None:
     if extensions is None:
-        extensions = ["info", "betterVC", "roleOnJoin", "league", "dev", "reactionRoles"]
-    print(f"Extensions loaded: {', '.join(extensions)}")
+        extensions = [
+            "info",
+            "betterVC",
+            "roleOnJoin",
+            "league",
+            "dev",
+            "reactionRoles",
+        ]
+    print(f"Loading extensions: {', '.join(extensions)}")
     for extension in extensions:
-        await bot.load_extension(f"extensions.{extension}")
+        try:
+            await bot.load_extension(f"extensions.{extension}")
+        except:
+            print(f'Could not load extension: "{extension}"')
+            extensions.remove(extension)
+    print(f"Loaded extensions: {', '.join(extensions)}")
 
 
-def check_enviroment_variables():
+def check_enviroment_variables() -> list[str]:
     enviromental_variables = [
         "DEV",
         "PREFIX",
@@ -43,7 +55,7 @@ async def setup():
 
     missing_variables = check_enviroment_variables()
     if len(missing_variables) != 0:
-        raise Exception(f"Missing enviroment variables{missing_variables}")
+        raise Exception(f"Missing enviroment variables: {missing_variables}")
 
     if not os.path.exists("data"):
         os.makedirs("data")
@@ -56,12 +68,8 @@ async def setup():
     async def on_ready():
         print(f"We have logged in as {bot.user} with prefix '{os.environ['PREFIX']}'")
 
-    @bot.command()
-    async def alive(ctx):
-        await ctx.send("Is alive!")
-
     if os.environ["DEV"] == "True":
-        print("Dev mode enabled")
+        print("DEV MODE ENABLED")
         await load_extensions(bot, ["dev", os.environ["TEST_EXTENSION"]])
     else:
         await load_extensions(bot)
