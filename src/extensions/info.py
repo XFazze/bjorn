@@ -1,7 +1,10 @@
 from datetime import timedelta, datetime
 from discord.ext import commands
+import unicodedata
+import platform
 import discord
 import typing
+import psutil
 
 
 class info(commands.Cog):
@@ -113,6 +116,81 @@ class info(commands.Cog):
         )
         embed.set_image(url=user.avatar)
         await ctx.reply(embed=embed)
+
+    @info.command(name="role", description="Returns information about a role")
+    async def role(self, ctx: commands.Context, role: discord.Role):
+        embed = discord.Embed(title=f"Role: {role.name}", color=role.color)
+
+        embed.add_field(name="ID", value=role.id)
+        embed.add_field(name="Color", value=f"#{role.color.value:06x}")
+        embed.add_field(
+            name="Created At", value=role.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        )
+        embed.add_field(name="Position", value=role.position)
+        embed.add_field(name="Mentionable", value="Yes" if role.mentionable else "No")
+
+        permissions = ", ".join(
+            [perm[0].replace("_", " ").title() for perm in role.permissions if perm[1]]
+        )
+        embed.add_field(
+            name="Permissions",
+            value=permissions if permissions else "None",
+            inline=False,
+        )
+
+        embed.add_field(name="Member Count", value=len(role.members))
+
+        if role.icon:
+            embed.set_thumbnail(url=role.icon.url)
+
+        await ctx.reply(embed=embed)
+
+    @info.command(
+        name="char",
+        description="Returns information about a Unicode character or emoji",
+    )
+    async def character(self, ctx: commands.Context, character: str):
+        if len(character) != 1:
+            await ctx.reply("Please provide a single character.")
+            return
+
+        char_info = {
+            "character": character,
+            "name": unicodedata.name(character, "Unknown"),
+            "unicode": f"U+{ord(character):04X}",
+            "category": unicodedata.category(character),
+            "bidirectional": unicodedata.bidirectional(character),
+            "combining": unicodedata.combining(character),
+            "east_asian_width": unicodedata.east_asian_width(character),
+            "mirrored": unicodedata.mirrored(character),
+            "decomposition": unicodedata.decomposition(character),
+        }
+
+        embed = discord.Embed(
+            title=f"Character Info: {char_info['character']}", color=0x00FF42
+        )
+
+        embed.add_field(name="Name", value=char_info["name"])
+        embed.add_field(name="Unicode", value=char_info["unicode"])
+        embed.add_field(name="Category", value=char_info["category"])
+        embed.add_field(name="Bidirectional", value=char_info["bidirectional"])
+        embed.add_field(name="Combining", value=char_info["combining"])
+        embed.add_field(name="East Asian Width", value=char_info["east_asian_width"])
+        embed.add_field(name="Mirrored", value=char_info["mirrored"])
+        embed.add_field(name="Decomposition", value=char_info["decomposition"] or "N/A")
+
+        await ctx.reply(embed=embed)
+    
+    @info.command(name="system", description="Shows system information of the bot's host")
+    async def system_info(self, ctx):
+        embed = discord.Embed(title="System Information", color=0x00FF42)
+        embed.add_field(name="OS", value=platform.system())
+        embed.add_field(name="OS Version", value=platform.version())
+        embed.add_field(name="CPU", value=platform.processor())
+        embed.add_field(name="CPU Usage", value=f"{psutil.cpu_percent()}%")
+        embed.add_field(name="RAM Usage", value=f"{psutil.virtual_memory().percent}%")
+        embed.add_field(name="Python Version", value=platform.python_version())
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):
