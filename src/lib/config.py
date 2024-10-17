@@ -12,6 +12,7 @@ class ConfigTables(Enum):
     ADMIN = "admin", "guild_id", "role_id"
     BETTERVC = "bettervc", "guild_id", "category_id"
     INGAMEROLE = "ingame_role", "guild_id", "role_id"
+    STRIKEPERMISSIONS = "strike_permissions", "guild_id", "role_id"
     REACTIONROLES = (
         "reaction_roles_message_id",
         "message_idaemoji_id",

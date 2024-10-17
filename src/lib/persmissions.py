@@ -19,10 +19,10 @@ def admin():
     return commands.check(predicate)
 
 
-def jar():
+def strike():
     async def predicate(ctx: commands.Context):
         db = ConfigDatabase(ctx.bot)
-        jar_roles = db.get_items_by(ConfigTables.JARPERMISSIONS, ctx.guild.id)
+        jar_roles = db.get_items_by(ConfigTables.STRIKEPERMISSIONS, ctx.guild.id)
         jar_roles_ids = set(jar_roles)
         user_roles = set([r.id for r in ctx.author.roles])
 
