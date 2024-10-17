@@ -21,6 +21,7 @@ async def load_extensions(bot: commands.Bot, extensions=None) -> None:
             "league",
             "dev",
             "reactionRoles",
+            "strike",
         ]
     print(f"Loading extensions: {', '.join(extensions)}")
     for extension in extensions:
