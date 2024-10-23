@@ -141,6 +141,7 @@ class Player:
                 raise Exception(f"No user with discord name{discord_name}")
 
             discord_id = discord_member_object.id
+            self.discord_name = discord_name
 
         existing_player = self.db.cursor.execute(
             f"SELECT discord_id, mmr, wins, losses FROM player WHERE discord_id = {discord_id}"
@@ -241,7 +242,7 @@ class Database(general.Database):
         super().__init__(os.environ["LEAGUE_DB_NAME"])
         self.create_tables(
             {
-                "player": ["discord_id", "mmr", "wins", "losses"],
+                "player": ["discord_id", "mmr", "wins", "losses", "discord_name"],
                 "match": [
                     "match_id",
                     "team1",
@@ -323,7 +324,7 @@ class Database(general.Database):
 
     def insert_player(self, player: Player):
         self.cursor.execute(
-            f"INSERT INTO player (discord_id, mmr, wins, losses) VALUES ({player.discord_id}, {player.mmr}, {player.wins}, {player.losses})"
+            f"INSERT INTO player (discord_id, mmr, wins, losses, discord_name) VALUES ({player.discord_id}, {player.mmr}, {player.wins}, {player.losses}, {player.discord_name})"
         )
         self.connection.commit()
 

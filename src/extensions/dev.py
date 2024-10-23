@@ -2,7 +2,9 @@ import os
 import discord
 from discord.ext import commands
 from discord import Role
-
+#import sqlite3
+#import logging
+#logger = logging.getLogger(__name__)
 import lib.persmissions as permissions
 from lib.config import ConfigTables, show_roles, set_value, remove_value
 
@@ -90,6 +92,30 @@ class dev(commands.Cog):
     @permissions.admin()
     async def remove_role(self, ctx: commands.Context, role: Role):
         await remove_value(self.bot, ctx, ConfigTables.ADMIN, ctx.guild.id, role.id)
+
+    #@commands.command()
+    #async def add_player_names(self, ctx):
+    #    conn = sqlite3.connect("data/league.sqlite")
+    #    cursor = conn.cursor()
+
+    #    cursor.execute("SELECT discord_id FROM player")
+    #    players = cursor.fetchall()
+    #    for player in players:
+            
+    #        user = self.bot.get_user(player[0])
+    #        logger.warning(player[0])
+    #        if user is None:
+    #            name = "Unknown"
+    #        else:
+    #            name = user.name
+    #        logger.warning(name)
+
+    #        cursor.execute(
+    #            "UPDATE player SET discord_name = ? WHERE discord_id = ? ",
+    #            (name, player[0])
+    #        )
+    #        conn.commit()
+    #    cursor.close()
 
 
 async def setup(bot: commands.Bot):
