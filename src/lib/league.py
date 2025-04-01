@@ -30,7 +30,6 @@ import lib.general as general
 
 ranks_mmr = {
     "Iron+": 0,
-    "Iron+": 0,
     "Bronze 3": 700,
     "Bronze 2": 800,
     "Bronze 1": 900,
@@ -308,7 +307,7 @@ class Database(general.Database):
         team1_string = "".join([str(player.discord_id) + " " for player in match.team1])
         team2_string = "".join([str(player.discord_id) + " " for player in match.team2])
 
-        insertion = f"INSERT INTO match (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+        insertion = "INSERT INTO match (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
         self.cursor.execute(
             insertion,
             (
@@ -323,17 +322,19 @@ class Database(general.Database):
         self.connection.commit()
 
     def insert_player(self, player: Player):
+        print(player.discord_id)
         self.cursor.execute(
-            f"INSERT INTO player (discord_id, mmr, wins, losses, discord_name) VALUES ({player.discord_id}, {player.mmr}, {player.wins}, {player.losses}, {player.discord_name})"
+            "INSERT INTO player (discord_id, mmr, wins, losses, discord_name) VALUES (?, ?, ?, ?, ?)",
+                (player.discord_id, player.mmr, player.wins, player.losses, player.discord_name),
         )
         self.connection.commit()
 
     def remove_player(self, player: Member):
-        self.cursor.execute(f"DELETE FROM player WHERE discord_id = {player.id}")
+        self.cursor.execute("DELETE FROM player WHERE discord_id = ?",(player.id))
         self.connection.commit()
 
     def remove_match(self, match_id: int):
-        self.cursor.execute(f"DELETE FROM match WHERE match_id = {match_id}")
+        self.cursor.execute("DELETE FROM match WHERE match_id = ?", (match_id,))
         self.connection.commit()
 
 
@@ -900,7 +901,6 @@ class QueueControlView(View):
             )
 
     async def _start_callback(self, interaction: Interaction):
-        await interaction.response.defer()
         if len(self.queue_view.queue) < 2:
             await interaction.response.send_message(
                 "Not enough players in queue", ephemeral=True
@@ -910,6 +910,7 @@ class QueueControlView(View):
         team1, team2 = generate_teams(
             [Player(self.bot, p.id, False) for p in self.queue_view.queue]
         )
+        await interaction.response.defer()
         await start_match(
             team1,
             team2,
