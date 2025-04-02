@@ -1152,8 +1152,9 @@ def generate_teams(players: list[Player]) -> tuple[list[Player], list[Player]]:
     team_size = num_players // 2
     best_teams = None
     best_diff = float("inf")
-
-    for team1_indices in combinations(range(num_players), team_size):
+    combination_list=list(combinations(range(num_players), team_size))
+    random.shuffle(combination_list)
+    for team1_indices in combination_list:
         team1 = [players[i] for i in team1_indices]
         team2 = [players[i] for i in range(num_players) if i not in team1_indices]
 
