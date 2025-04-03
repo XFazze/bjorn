@@ -50,9 +50,24 @@ class dev(commands.Cog):
     @permissions.admin()
     async def sync(self, ctx: commands.Context):
         logger.info(f"Syncing commands initiated by {ctx.author} in {ctx.guild}")
+
+        # Immediately defer the response to prevent interaction timeout
+        if hasattr(ctx, "interaction") and ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+
+        # Perform the sync operation (which can take time)
         await self.bot.tree.sync()
         logger.info("Command tree sync completed successfully")
-        await ctx.reply(embed=discord.Embed(title=f"Synced!", color=0x00FF42))
+
+        # Send the response using the appropriate method
+        if hasattr(ctx, "interaction") and ctx.interaction:
+            # Use the deferred interaction response
+            await ctx.interaction.followup.send(
+                embed=discord.Embed(title=f"Synced!", color=0x00FF42), ephemeral=True
+            )
+        else:
+            # Fallback for text commands or if interaction is not available
+            await ctx.reply(embed=discord.Embed(title=f"Synced!", color=0x00FF42))
 
     @commands.hybrid_command(name="devchannel", description="Creates a dev channel")
     @permissions.admin()
