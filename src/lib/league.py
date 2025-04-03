@@ -2,6 +2,7 @@ import os
 import datetime
 import random
 import discord
+import logging
 from discord import (
     ButtonStyle,
     Interaction,
@@ -27,6 +28,8 @@ from lib.config import ConfigDatabase, ConfigTables
 import lib.draftlolws as draftlol
 import lib.general as general
 
+# Setup logger
+logger = logging.getLogger(__name__)
 
 ranks_mmr = {
     "Iron+": 0,
@@ -257,85 +260,126 @@ class Database(general.Database):
         self.bot = bot
 
     def get_all_guild_options(self):
-        res = self.cursor.execute(
-            f"SELECT guild_id, customs_channel FROM guild_options"
-        ).fetchall()
+        try:
+            res = self.cursor.execute(
+                "SELECT guild_id, customs_channel FROM guild_options"
+            ).fetchall()
+            return res
+        except Exception as e:
+            logger.error(f"Error fetching guild options: {e}")
+            return []
 
     def get_all_matches(self):
-        res = self.cursor.execute(
-            f"SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match"
-        ).fetchall()
-
-        matches = []
-        for i in res:
-            team1 = [Player(self.bot, int(i)) for i in i[1].split(" ")[0:-1]]
-            team2 = [Player(self.bot, int(i)) for i in i[2].split(" ")[0:-1]]
-
-            matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
-
-        return matches
+        try:
+            res = self.cursor.execute(
+                "SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match"
+            ).fetchall()
+            matches = []
+            for i in res:
+                try:
+                    team1 = [
+                        Player(self.bot, int(player_id)) for player_id in i[1].split()
+                    ]
+                    team2 = [
+                        Player(self.bot, int(player_id)) for player_id in i[2].split()
+                    ]
+                    matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
+                except Exception as e:
+                    logger.error(f"Error processing match {i[0]}: {e}")
+            return matches
+        except Exception as e:
+            logger.error(f"Error fetching matches: {e}")
+            return []
 
     def get_matches(self, discord_id: int):
-        res = self.cursor.execute(
-            f"SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match"
-        ).fetchall()
-
-        matches = []
-        for i in res:
-            if (
-                str(discord_id) in i[1].split(" ")[0:-1]
-                or str(discord_id) in i[2].split(" ")[0:-1]
-            ):
-                team1 = []
-                team2 = []
-
-                team1 = [Player(self.bot, int(i)) for i in i[1].split(" ")[0:-1]]
-                team2 = [Player(self.bot, int(i)) for i in i[2].split(" ")[0:-1]]
-
-                matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
-        return matches
+        try:
+            res = self.cursor.execute(
+                "SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match"
+            ).fetchall()
+            matches = []
+            for i in res:
+                try:
+                    if (
+                        str(discord_id) in i[1].split()
+                        or str(discord_id) in i[2].split()
+                    ):
+                        team1 = [
+                            Player(self.bot, int(player_id))
+                            for player_id in i[1].split()
+                        ]
+                        team2 = [
+                            Player(self.bot, int(player_id))
+                            for player_id in i[2].split()
+                        ]
+                        matches.append(Match(i[0], team1, team2, i[3], i[4], i[5]))
+                except Exception as e:
+                    logger.error(
+                        f"Error processing match {i[0]} for player {discord_id}: {e}"
+                    )
+            return matches
+        except Exception as e:
+            logger.error(f"Error fetching matches for player {discord_id}: {e}")
+            return []
 
     def get_all_players(self):
-        res = self.cursor.execute(f"SELECT discord_id FROM player").fetchall()
-        players = [Player(self.bot, discord_id=i[0]) for i in res]
-        players = [
-            player for player in players if player.user_exists
-        ]  # Removes deleted users
-        return players
+        try:
+            res = self.cursor.execute("SELECT discord_id FROM player").fetchall()
+            players = [Player(self.bot, discord_id=i[0]) for i in res]
+            players = [player for player in players if player.user_exists]
+            return players
+        except Exception as e:
+            logger.error(f"Error fetching all players: {e}")
+            return []
 
     def insert_match(self, match: Match):
-        team1_string = "".join([str(player.discord_id) + " " for player in match.team1])
-        team2_string = "".join([str(player.discord_id) + " " for player in match.team2])
-
-        insertion = "INSERT INTO match (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
-        self.cursor.execute(
-            insertion,
-            (
-                match.match_id,
-                team1_string,
-                team2_string,
-                match.winner,
-                match.mmr_diff,
-                match.timestamp,
-            ),
-        )
-        self.connection.commit()
+        try:
+            team1_string = " ".join([str(player.discord_id) for player in match.team1])
+            team2_string = " ".join([str(player.discord_id) for player in match.team2])
+            insertion = "INSERT INTO match (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+            self.cursor.execute(
+                insertion,
+                (
+                    match.match_id,
+                    team1_string,
+                    team2_string,
+                    match.winner,
+                    match.mmr_diff,
+                    match.timestamp,
+                ),
+            )
+            self.connection.commit()
+        except Exception as e:
+            logger.error(f"Error inserting match {match.match_id}: {e}")
 
     def insert_player(self, player: Player):
-        print(player.discord_id)
-        self.cursor.execute(
-            "INSERT INTO player (discord_id, mmr, wins, losses, discord_name) VALUES (?, ?, ?, ?, ?)",
-                (player.discord_id, player.mmr, player.wins, player.losses, player.discord_name),
-        )
-        self.connection.commit()
+        try:
+            self.cursor.execute(
+                "INSERT INTO player (discord_id, mmr, wins, losses, discord_name) VALUES (?, ?, ?, ?, ?)",
+                (
+                    player.discord_id,
+                    player.mmr,
+                    player.wins,
+                    player.losses,
+                    player.discord_name,
+                ),
+            )
+            self.connection.commit()
+        except Exception as e:
+            logger.error(f"Error inserting player {player.discord_id}: {e}")
 
     def remove_player(self, player: Member):
-        self.cursor.execute("DELETE FROM player WHERE discord_id = ?",(player.id))
-        self.connection.commit()
+        try:
+            self.cursor.execute("DELETE FROM player WHERE discord_id = ?", (player.id,))
+            self.connection.commit()
+        except Exception as e:
+            logger.error(f"Error removing player {player.id}: {e}")
 
     def remove_match(self, match_id: int):
-        self.cursor.execute("DELETE FROM match WHERE match_id = ?", (match_id,))
-        self.connection.commit()
+        try:
+            self.cursor.execute("DELETE FROM match WHERE match_id = ?", (match_id,))
+            self.connection.commit()
+        except Exception as e:
+            logger.error(f"Error removing match {match_id}: {e}")
 
 
 class StatisticsGeneralEmbed(Embed):
@@ -643,10 +687,14 @@ class MatchControlView(View):  # ändra till playersembed
         self.match_embed = match_embed
         self.ingame_ping_message = ingame_ping_message
         config = ConfigDatabase(bot)
-        ingame_role = config.get_items_by(ConfigTables.INGAMEROLE, guild.id)
-        if len(ingame_role) < 0:
-            self.ingame_role = guild.get_role(ingame_role[0])
-        else:
+        try:
+            ingame_role = config.get_items_by(ConfigTables.INGAMEROLE, guild.id)
+            if len(ingame_role) > 0:
+                self.ingame_role = guild.get_role(ingame_role[0])
+            else:
+                self.ingame_role = None
+        except Exception as e:
+            logger.error(f"Error setting up ingame role: {e}")
             self.ingame_role = None
 
         blue_win_button = Button(label="Blue Win", style=ButtonStyle.green)
@@ -654,7 +702,6 @@ class MatchControlView(View):  # ändra till playersembed
         self.add_item(blue_win_button)
 
         red_win_button = Button(label="Red Win", style=ButtonStyle.green)
-
         red_win_button.callback = self._red_win_callback
         self.add_item(red_win_button)
 
@@ -664,44 +711,79 @@ class MatchControlView(View):  # ändra till playersembed
 
     async def _blue_win_callback(self, interaction: Interaction):
         await interaction.response.defer()
-        await self.remove_ingame_role(interaction)
-        mmr_gains = self.match.finish_match(1)
-        self.match_embed.title = f"Winner: Blue Team(+/- {mmr_gains})"
-        await self.match_message.edit(embed=self.match_embed)
+        try:
+            await self.remove_ingame_role(interaction)
+            mmr_gains = self.match.finish_match(1)
+            self.match_embed.title = f"Winner: Blue Team(+/- {mmr_gains})"
+            await self.match_message.edit(embed=self.match_embed)
 
-        message = await interaction.original_response()
-        await message.edit(
-            view=MatchViewDone(self.bot, self.match),
-        )
+            message = await interaction.original_response()
+            await message.edit(
+                view=MatchViewDone(self.bot, self.match),
+            )
+        except Exception as e:
+            logger.error(f"Error in blue win callback: {e}")
+            try:
+                await interaction.followup.send(
+                    f"An error occurred while processing the blue team win: {e}",
+                    ephemeral=True,
+                )
+            except Exception:
+                pass
 
     async def _red_win_callback(self, interaction: Interaction):
         await interaction.response.defer()
-        await self.remove_ingame_role(interaction)
-        mmr_gains = self.match.finish_match(2)
-        self.match_embed.title = f"Winner: Red Team(+/- {mmr_gains})"
-        await self.match_message.edit(embed=self.match_embed)
+        try:
+            await self.remove_ingame_role(interaction)
+            mmr_gains = self.match.finish_match(2)
+            self.match_embed.title = f"Winner: Red Team(+/- {mmr_gains})"
+            await self.match_message.edit(embed=self.match_embed)
 
-        message = await interaction.original_response()
-        await message.edit(
-            view=MatchViewDone(self.bot, self.match),
-        )
+            message = await interaction.original_response()
+            await message.edit(
+                view=MatchViewDone(self.bot, self.match),
+            )
+        except Exception as e:
+            logger.error(f"Error in red win callback: {e}")
+            try:
+                await interaction.followup.send(
+                    f"An error occurred while processing the red team win: {e}",
+                    ephemeral=True,
+                )
+            except Exception:
+                pass
 
     async def _discard_callback(self, interaction: Interaction):
         await interaction.response.defer()
-        await self.remove_ingame_role(interaction)
-        await self.match_message.delete()
-        # if self.ingame_ping_message is not None:
-        #    self.ingame_ping_message.delete()
+        try:
+            await self.remove_ingame_role(interaction)
+            await self.match_message.delete()
+        except Exception as e:
+            logger.error(f"Error in discard callback: {e}")
+            try:
+                await interaction.followup.send(
+                    f"An error occurred while discarding the match: {e}", ephemeral=True
+                )
+            except Exception:
+                pass
 
     async def remove_ingame_role(self, interaction: Interaction):
-        player_ids = [
-            player.discord_id for player in self.match.team1 + self.match.team2
-        ]
-        for player_id in player_ids:
-            user = interaction.guild.get_member(player_id)
+        if not self.ingame_role:
+            return
 
-            if self.ingame_role and self.ingame_role in user.roles:
-                await user.remove_roles(self.ingame_role)
+        try:
+            player_ids = [
+                player.discord_id for player in self.match.team1 + self.match.team2
+            ]
+            for player_id in player_ids:
+                try:
+                    user = interaction.guild.get_member(player_id)
+                    if user and self.ingame_role in user.roles:
+                        await user.remove_roles(self.ingame_role)
+                except Exception as e:
+                    logger.error(f"Error removing role from user {player_id}: {e}")
+        except Exception as e:
+            logger.error(f"Error removing ingame roles: {e}")
 
 
 class MatchViewDone(View):
@@ -953,7 +1035,7 @@ async def start_match(
     embed = MatchEmbed(team1, team2, creator)
     config = ConfigDatabase(bot)
     ingame_role = config.get_items_by(ConfigTables.INGAMEROLE, guild.id)
-    print(ingame_role)
+    logger.info(ingame_role)
     if len(ingame_role) > 0:
         ingame_role = guild.get_role(ingame_role[0])
         for player in team1 + team2:
