@@ -1,7 +1,7 @@
 from discord.ext import commands
 import discord
 import time
-import lib.persmissions as permissions
+import lib.permissions as permissions
 from lib.config import ConfigTables, show_roles, set_value, remove_value
 from discord import Role
 from lib.strike import Database
