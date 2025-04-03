@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from discord.utils import get
 from discord import Member, VoiceState, Guild, CategoryChannel
 
-import lib.persmissions as permissions
+import lib.permissions as permissions
 from lib.config import (
     ConfigDatabase,
     ConfigTables,

@@ -5,7 +5,7 @@ from discord import Role
 #import sqlite3
 #import logging
 #logger = logging.getLogger(__name__)
-import lib.persmissions as permissions
+import lib.permissions as permissions
 from lib.config import ConfigTables, show_roles, set_value, remove_value
 
 
