@@ -28,7 +28,7 @@ from lib.config import ConfigDatabase, ConfigTables
 import lib.draftlolws as draftlol
 import lib.general as general
 
-# Setup logger
+
 logger = logging.getLogger(__name__)
 
 ranks_mmr = {

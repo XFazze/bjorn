@@ -6,14 +6,14 @@ import discord
 from discord.ext import commands
 import traceback
 
-# Setup logging
+
 logging_level = (
     logging.DEBUG if os.environ.get("DEV", "False") == "True" else logging.INFO
 )
 logging.basicConfig(
     level=logging_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("bjorn.log")],
+    handlers=[logging.StreamHandler()],
 )
 
 
