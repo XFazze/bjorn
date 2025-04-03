@@ -83,8 +83,28 @@ def dict_factory(cursor, row):
 
 @app.route("/")
 def index():
-    """Main page with links to different views"""
-    return render_template("index.html")
+    """Main page with links to different views and summary stats"""
+    try:
+        conn = get_league_db()
+        conn.row_factory = dict_factory
+        cursor = conn.cursor()
+
+        # Get basic stats for the dashboard
+        total_players = cursor.execute("SELECT COUNT(*) as count FROM player").fetchone()["count"]
+        total_matches = cursor.execute("SELECT COUNT(*) as count FROM match").fetchone()["count"]
+        avg_mmr = cursor.execute("SELECT AVG(mmr) as avg FROM player").fetchone()["avg"]
+        
+        conn.close()
+        return render_template(
+            "index.html", 
+            total_players=total_players,
+            total_matches=total_matches,
+            avg_mmr=round(avg_mmr) if avg_mmr else 0
+        )
+    except Exception as e:
+        # If we can't get stats, just render the page without them
+        print(f"Error fetching dashboard stats: {str(e)}")
+        return render_template("index.html")
 
 
 @app.route("/players")
@@ -527,42 +547,42 @@ def format_datetime(value, format="%Y-%m-%d %H:%M"):
 def mmr_tier_filter(mmr):
     """Return CSS tier class based on MMR value"""
     if mmr < 700:
-        return "iron"
+        return "🔧 Iron"
     elif mmr < 900:
-        return "bronze"
+        return "🥉 Bronze"
     elif mmr < 1300:
-        return "silver"
+        return "🥈 Silver"
     elif mmr < 1700:
-        return "gold"
+        return "🥇 Gold"
     elif mmr < 2100:
-        return "platinum"
+        return "💎 Platinum"
     elif mmr < 2500:
-        return "diamond"
+        return "💠 Diamond"
     elif mmr < 2900:
-        return "master"
+        return "👑 Master"
     else:
-        return "grandmaster"
+        return "⚜️ Grandmaster"
 
 
 @app.template_filter("mmr_tier_name")
 def mmr_tier_name_filter(mmr):
-    """Return tier name based on MMR value"""
+    """Return tier name with emoji based on MMR value"""
     if mmr < 700:
-        return "Iron"
+        return "🔧 Iron"
     elif mmr < 900:
-        return "Bronze"
+        return "🥉 Bronze"
     elif mmr < 1300:
-        return "Silver"
+        return "🥈 Silver"
     elif mmr < 1700:
-        return "Gold"
+        return "🥇 Gold"
     elif mmr < 2100:
-        return "Platinum"
+        return "💎 Platinum"
     elif mmr < 2500:
-        return "Diamond"
+        return "💠 Diamond"
     elif mmr < 2900:
-        return "Master"
+        return "👑 Master"
     else:
-        return "Grandmaster"
+        return "⚜️ Grandmaster"
 
 
 @app.cli.command("init-db-dirs")

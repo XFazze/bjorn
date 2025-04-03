@@ -1,35 +1,57 @@
 /* Discord-inspired theme for Bjorn Bot Dashboard */
 :root {
     /* Enhanced color palette with more vibrant tones */
-    --discord-primary: #2F3136;       /* Slightly lighter main background */
-    --discord-secondary: #36393F;     /* Lighter cards for better contrast */
-    --discord-tertiary: #202225;      /* Darker elements */
-    --discord-text: #FFFFFF;          /* Brighter text for better readability */
-    --discord-muted: #989AA2;         /* Lighter secondary text */
-    --discord-blurple: #5865F2;       /* Discord's primary color */
-    --discord-blurple-hover: #4752C4; /* Hover state */
-    --discord-link: #00AFF4;          /* Links */
-    --discord-green: #43B581;         /* Success, online */
-    --discord-yellow: #FAA61A;        /* Warning, idle */
-    --discord-red: #F04747;           /* Danger, DND */
-    --discord-input: #40444B;         /* Input fields */
-    --discord-header: #202225;        /* Card headers, nav */
-    
+    --discord-primary: #2F3136;
+    /* Slightly lighter main background */
+    --discord-secondary: #36393F;
+    /* Lighter cards for better contrast */
+    --discord-tertiary: #202225;
+    /* Darker elements */
+    --discord-text: #FFFFFF;
+    /* Brighter text for better readability */
+    --discord-muted: #989AA2;
+    /* Lighter secondary text */
+    --discord-blurple: #5865F2;
+    /* Discord's primary color */
+    --discord-blurple-hover: #4752C4;
+    /* Hover state */
+    --discord-link: #00AFF4;
+    /* Links */
+    --discord-green: #43B581;
+    /* Success, online */
+    --discord-yellow: #FAA61A;
+    /* Warning, idle */
+    --discord-red: #F04747;
+    /* Danger, DND */
+    --discord-input: #40444B;
+    /* Input fields */
+    --discord-header: #202225;
+    /* Card headers, nav */
+
+    /* Add RGB versions for transparency */
+    --discord-primary-rgb: 47, 49, 54;
+    --discord-secondary-rgb: 54, 57, 63;
+    --discord-tertiary-rgb: 32, 34, 37;
+
     /* New accent colors */
-    --discord-accent-1: #7289DA;      /* Softer purple */
-    --discord-accent-2: #747F8D;      /* Neutral accent */
-    --discord-hover-overlay: rgba(255, 255, 255, 0.05); /* Hover overlay */
-    --discord-focus-border: rgba(88, 101, 242, 0.6);    /* Focus border */
-    
+    --discord-accent-1: #7289DA;
+    /* Softer purple */
+    --discord-accent-2: #747F8D;
+    /* Neutral accent */
+    --discord-hover-overlay: rgba(255, 255, 255, 0.05);
+    /* Hover overlay */
+    --discord-focus-border: rgba(88, 101, 242, 0.6);
+    /* Focus border */
+
     /* Gradients */
     --header-gradient: linear-gradient(to right, var(--discord-tertiary), #2a2c31);
     --card-gradient: linear-gradient(135deg, var(--discord-secondary) 0%, #32353b 100%);
-    
+
     /* Shadow values */
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
-    
+
     /* Animation speeds */
     --transition-speed-fast: 0.15s;
     --transition-speed-normal: 0.25s;
@@ -38,24 +60,44 @@
 
 /* Light theme variables */
 :root.light-mode {
-    --discord-primary: #FFFFFF;       /* Light background */
-    --discord-secondary: #F8F9FA;     /* Light cards */
-    --discord-tertiary: #E9ECEF;      /* Lighter elements */
-    --discord-text: #212529;          /* Darker text */
-    --discord-muted: #6C757D;         /* Muted text */
-    --discord-blurple: #5865F2;       /* Same primary color */
-    --discord-blurple-hover: #4752C4; /* Same hover state */
-    --discord-link: #007BFF;          /* Blue links */
-    --discord-green: #28A745;         /* Success */
-    --discord-yellow: #FFC107;        /* Warning */
-    --discord-red: #DC3545;           /* Danger */
-    --discord-input: #FFFFFF;         /* Input fields */
-    --discord-header: #F8F9FA;        /* Card headers, nav */
+    --discord-primary: #FFFFFF;
+    /* Light background */
+    --discord-secondary: #F8F9FA;
+    /* Light cards */
+    --discord-tertiary: #E9ECEF;
+    /* Lighter elements */
+    --discord-text: #212529;
+    /* Darker text */
+    --discord-muted: #6C757D;
+    /* Muted text */
+    --discord-blurple: #5865F2;
+    /* Same primary color */
+    --discord-blurple-hover: #4752C4;
+    /* Same hover state */
+    --discord-link: #007BFF;
+    /* Blue links */
+    --discord-green: #28A745;
+    /* Success */
+    --discord-yellow: #FFC107;
+    /* Warning */
+    --discord-red: #DC3545;
+    /* Danger */
+    --discord-input: #FFFFFF;
+    /* Input fields */
+    --discord-header: #F8F9FA;
+    /* Card headers, nav */
+
+    /* Add RGB versions for transparency */
+    --discord-primary-rgb: 255, 255, 255;
+    --discord-secondary-rgb: 248, 249, 250;
+    --discord-tertiary-rgb: 233, 236, 239;
 
     --header-gradient: linear-gradient(to right, var(--discord-tertiary), #E9ECEF);
     --card-gradient: linear-gradient(135deg, var(--discord-secondary) 0%, #FFFFFF 100%);
-    --discord-hover-overlay: rgba(0, 0, 0, 0.05); /* Hover overlay */
-    --discord-focus-border: rgba(0, 123, 255, 0.6); /* Focus border */
+    --discord-hover-overlay: rgba(0, 0, 0, 0.05);
+    /* Hover overlay */
+    --discord-focus-border: rgba(0, 123, 255, 0.6);
+    /* Focus border */
 }
 
 body {
@@ -67,6 +109,12 @@ body {
     font-family: 'Inter', 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     line-height: 1.5;
     transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.main-content {
+    flex: 1 0 auto;
+    width: 100%;
+    padding-bottom: 2rem;
 }
 
 /* Improved Navbar with gradient */
@@ -111,27 +159,23 @@ body {
     margin: 0 0.25rem;
 }
 
+/* Remove the underline hover effect */
 .nav-link:after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px;
-    bottom: 0;
-    left: 50%;
-    background-color: var(--discord-blurple);
-    transition: all var(--transition-speed-normal) ease;
-    transform: translateX(-50%);
+    display: none;
+    /* Remove the underline effect */
 }
 
 .nav-link:hover:after {
-    width: 80%;
+    display: none;
+    /* Remove the underline effect */
 }
 
 .nav-link.active:after {
-    width: 80%;
+    display: none;
+    /* Remove the underline effect */
 }
 
-/* Add gradient background to active navigation links */
+/* Keep only the gradient background hover effect */
 .nav-link.active {
     background: linear-gradient(135deg, var(--discord-blurple), var(--discord-blurple-hover));
     color: white !important;
@@ -146,15 +190,17 @@ body {
     border-radius: 8px;
     box-shadow: var(--shadow-sm);
     margin-bottom: 20px;
-    transition: transform var(--transition-speed-normal), 
-                box-shadow var(--transition-speed-normal);
+    transition: transform var(--transition-speed-normal),
+        box-shadow var(--transition-speed-normal);
     overflow: hidden;
     transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card:hover {
-    box-shadow: var(--shadow-lg); /* Stronger shadow */
-    transform: translateY(-5px); /* Lift effect */
+    box-shadow: var(--shadow-lg);
+    /* Stronger shadow */
+    transform: translateY(-5px);
+    /* Lift effect */
 }
 
 .card-header {
@@ -172,12 +218,16 @@ body {
 
 /* Improved footer */
 .footer {
+    flex-shrink: 0;
     margin-top: auto;
+    /* Push to bottom */
     background: var(--header-gradient);
     color: var(--discord-text);
     padding: 20px 0;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    /* Changed from margin-top: auto to position: relative */
 }
 
 /* Improve footer links hover effect */
@@ -220,7 +270,8 @@ body {
 
 /* Add hover effect for table rows */
 .table-hover tbody tr:hover {
-    background-color: rgba(88, 101, 242, 0.1); /* Subtle blurple highlight */
+    background-color: rgba(88, 101, 242, 0.1);
+    /* Subtle blurple highlight */
     transition: background-color 0.2s ease;
 }
 
@@ -228,7 +279,8 @@ body {
     background-color: var(--discord-hover-overlay);
 }
 
-.table td, .table th {
+.table td,
+.table th {
     border-top-color: rgba(255, 255, 255, 0.08);
     border-bottom-color: rgba(255, 255, 255, 0.08);
     vertical-align: middle;
@@ -248,8 +300,10 @@ body {
 }
 
 .btn:hover {
-    transform: translateY(-2px); /* Slight lift effect */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Enhanced shadow */
+    transform: translateY(-2px);
+    /* Slight lift effect */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    /* Enhanced shadow */
 }
 
 .btn::after {
@@ -348,7 +402,8 @@ body {
     background-color: transparent;
 }
 
-.btn-outline-primary:hover, .btn-outline-primary.active {
+.btn-outline-primary:hover,
+.btn-outline-primary.active {
     background-color: var(--discord-blurple);
     color: white;
     border-color: var(--discord-blurple);
@@ -478,7 +533,9 @@ a:hover {
 }
 
 /* Responsive plot sizing */
-#mmr-distribution, #monthly-matches, #mmr-graph {
+#mmr-distribution,
+#monthly-matches,
+#mmr-graph {
     height: 400px;
     width: 100%;
     background-color: var(--discord-secondary);
@@ -521,22 +578,30 @@ a:hover {
 }
 
 /* Table variants for Discord theming */
-.table-success, .table-success>td, .table-success>th {
+.table-success,
+.table-success>td,
+.table-success>th {
     background-color: rgba(67, 181, 129, 0.2);
     border-color: rgba(67, 181, 129, 0.3);
 }
 
-.table-danger, .table-danger>td, .table-danger>th {
+.table-danger,
+.table-danger>td,
+.table-danger>th {
     background-color: rgba(240, 71, 71, 0.2);
     border-color: rgba(240, 71, 71, 0.3);
 }
 
-.table-info, .table-info>td, .table-info>th {
+.table-info,
+.table-info>td,
+.table-info>th {
     background-color: rgba(0, 175, 244, 0.2);
     border-color: rgba(0, 175, 244, 0.3);
 }
 
-.table-warning, .table-warning>td, .table-warning>th {
+.table-warning,
+.table-warning>td,
+.table-warning>th {
     background-color: rgba(250, 166, 26, 0.2);
     border-color: rgba(250, 166, 26, 0.3);
 }
@@ -574,8 +639,8 @@ a:hover {
 .top-player-card {
     position: relative;
     overflow: hidden;
-    transition: transform var(--transition-speed-normal), 
-                box-shadow var(--transition-speed-normal);
+    transition: transform var(--transition-speed-normal),
+        box-shadow var(--transition-speed-normal);
     border-left: none !important;
     background: linear-gradient(135deg, var(--discord-secondary) 0%, #32353b 100%);
     border-radius: 8px;
@@ -584,7 +649,8 @@ a:hover {
 
 .top-player-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 8px 16px rgba(88, 101, 242, 0.4); /* Blurple glow */
+    box-shadow: 0 8px 16px rgba(88, 101, 242, 0.4);
+    /* Blurple glow */
 }
 
 .top-player-card::before {
@@ -755,18 +821,34 @@ a:hover {
 
 /* Improve animations for page loads and transitions */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .container {
     animation: fadeIn 0.3s ease-out;
+    width: 100%;
 }
 
 /* Add highlighting for search results */
@@ -834,39 +916,40 @@ mark {
     .card-header {
         padding: 10px 14px;
     }
-    
+
     .card-body {
         padding: 15px;
     }
-    
+
     .top-player-card {
         margin-bottom: 20px;
     }
-    
+
     .btn-group {
         margin-top: 10px;
         width: 100%;
         display: flex;
         justify-content: center;
     }
-    
+
     .btn-group .btn {
         flex: 1;
     }
-    
+
     .table-responsive {
         border-radius: 4px;
     }
-    
+
     /* Improved mobile spacing */
-    h1, .h1 {
+    h1,
+    .h1 {
         font-size: 1.8rem;
     }
-    
+
     .lead {
         font-size: 1rem;
     }
-    
+
     .container {
         padding-left: 20px;
         padding-right: 20px;
@@ -892,7 +975,7 @@ mark {
     transition: all var(--transition-speed-normal);
     border: 2px solid transparent;
     background-image: linear-gradient(var(--discord-primary), var(--discord-primary)),
-                      linear-gradient(135deg, var(--discord-blurple), var(--discord-blurple-hover));
+        linear-gradient(135deg, var(--discord-blurple), var(--discord-blurple-hover));
     background-origin: border-box;
     background-clip: content-box, border-box;
 }
@@ -957,7 +1040,7 @@ mark {
         padding: 3px 8px;
         font-size: 0.75rem;
     }
-    
+
     .table td {
         padding: 10px 6px;
     }
