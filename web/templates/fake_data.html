@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Fake Data - Bjorn Bot Dashboard{% endblock %}
+
+{% block content %}
+<h1>Fake Data</h1>
+<p class="lead">This page displays test data used for development and testing.</p>
+
+<h2>Fake Players</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Discord ID</th>
+                <th>Name</th>
+                <th>MMR</th>
+                <th>Wins</th>
+                <th>Losses</th>
+                <th>Win Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if fake_players %}
+                {% for player in fake_players %}
+                <tr>
+                    <td>{{ player.id }}</td>
+                    <td>{{ player.discord_id }}</td>
+                    <td>{{ player.discord_name }}</td>
+                    <td>{{ player.mmr }}</td>
+                    <td>{{ player.wins }}</td>
+                    <td>{{ player.losses }}</td>
+                    <td>
+                        {% if player.wins + player.losses > 0 %}
+                            {{ (player.wins / (player.wins + player.losses) * 100) | round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">No fake players found</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<h2>Fake Matches</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Match ID</th>
+                <th>Team 1</th>
+                <th>Team 2</th>
+                <th>Winner</th>
+                <th>MMR Diff</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if fake_matches %}
+                {% for match in fake_matches %}
+                <tr>
+                    <td>{{ match.match_id }}</td>
+                    <td>{{ match.team1 }}</td>
+                    <td>{{ match.team2 }}</td>
+                    <td>Team {{ match.winner }}</td>
+                    <td>{{ match.mmr_diff }}</td>
+                    <td>{{ match.timestamp | datetime }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">No fake matches found</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

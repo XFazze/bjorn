@@ -454,7 +454,7 @@ def stats():
 
         # Create MMR distribution chart
         mmr_values = [p["mmr"] for p in mmr_data]
-        if (mmr_values):
+        if mmr_values:
             df = pd.DataFrame({"mmr": mmr_values})
             fig = px.histogram(df, x="mmr", nbins=20, title="MMR Distribution")
             mmr_chart = json.dumps(fig, cls=PlotlyJSONEncoder)
@@ -486,6 +486,32 @@ def stats():
         return render_template("error.html", error_message=error_message)
 
 
+@app.route("/fake-data")
+def fake_data():
+    """Display fake data from the database"""
+    try:
+        conn = get_league_db()
+        conn.row_factory = dict_factory
+        cursor = conn.cursor()
+
+        # Fetch fake players from the database
+        fake_players = cursor.execute("SELECT * FROM fake_player").fetchall()
+
+        # Fetch fake matches from the database
+        fake_matches = cursor.execute(
+            "SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM fake_match"
+        ).fetchall()
+
+        conn.close()
+        return render_template(
+            "fake_data.html", fake_players=fake_players, fake_matches=fake_matches
+        )
+    except Exception as e:
+        error_message = f"Error retrieving fake data: {str(e)}"
+        print(error_message)
+        return render_template("error.html", error_message=error_message)
+
+
 @app.template_filter("datetime")
 def format_datetime(value, format="%Y-%m-%d %H:%M"):
     """Format a datetime string"""
@@ -500,35 +526,40 @@ def format_datetime(value, format="%Y-%m-%d %H:%M"):
 @app.template_filter("mmr_tier")
 def mmr_tier_filter(mmr):
     """Return CSS tier class based on MMR value"""
-    if mmr < 800:
+    if mmr < 700:
+        return "iron"
+    elif mmr < 900:
         return "bronze"
-    elif mmr < 1000:
+    elif mmr < 1300:
         return "silver"
-    elif mmr < 1200:
+    elif mmr < 1700:
         return "gold"
-    elif mmr < 1400:
+    elif mmr < 2100:
         return "platinum"
-    elif mmr < 1600:
+    elif mmr < 2500:
         return "diamond"
-    elif mmr < 1800:
+    elif mmr < 2900:
         return "master"
     else:
         return "grandmaster"
 
+
 @app.template_filter("mmr_tier_name")
 def mmr_tier_name_filter(mmr):
     """Return tier name based on MMR value"""
-    if mmr < 800:
+    if mmr < 700:
+        return "Iron"
+    elif mmr < 900:
         return "Bronze"
-    elif mmr < 1000:
+    elif mmr < 1300:
         return "Silver"
-    elif mmr < 1200:
+    elif mmr < 1700:
         return "Gold"
-    elif mmr < 1400:
+    elif mmr < 2100:
         return "Platinum"
-    elif mmr < 1600:
+    elif mmr < 2500:
         return "Diamond"
-    elif mmr < 1800:
+    elif mmr < 2900:
         return "Master"
     else:
         return "Grandmaster"
