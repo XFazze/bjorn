@@ -42,37 +42,56 @@ Bjorn is a Discord bot built using the discord.py framework, designed to enhance
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/bjorn.git
+   git clone https://github.com/XFazze/bjorn.git
    cd bjorn
    ```
 
 2. Create configuration files:
-   - Copy `.env.example` to `.env` and modify as needed
-   - Create `.env.secret` with your Discord bot token
+   - Create `.env` file with the required environment variables (see Configuration section)
+   - Create `.env.secret` file with your Discord bot token and other sensitive data
 
 3. Build and run with Docker Compose:
    ```bash
    sudo docker compose up -d --build
    ```
 
+### Development Environment
+
+To run the bot in development mode:
+
+```bash
+docker compose --profile dev run --service-ports bot_dev
+```
+
+Add `sh` at the end if you want to access a shell:
+
+```bash
+docker compose --profile dev run --service-ports bot_dev sh
+```
+
 ### Manual Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/bjorn.git
+   git clone https://github.com/XFazze/bjorn.git
    cd bjorn
    ```
 
-2. Install dependencies:
+2. Create a `data` directory:
+   ```bash
+   mkdir -p data
+   ```
+
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Create configuration files:
-   - Copy `.env.example` to `.env` and modify as needed
-   - Create `.env.secret` with your Discord bot token
+4. Create configuration files:
+   - Create `.env` file with the required environment variables
+   - Create `.env.secret` file with your Discord bot token
 
-4. Run the bot:
+5. Run the bot:
    ```bash
    python src/main.py
    ```
