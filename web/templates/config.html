@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuration - Bjorn Bot Dashboard{% endblock %}
+
+{% block content %}
+<h1>Configuration</h1>
+<p class="lead">View configuration settings from the config database</p>
+
+{% for table_name, items in config_data.items() %}
+<div class="card mb-4">
+    <div class="card-header">{{ table_name }}</div>
+    <div class="card-body">
+        {% if items %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        {% for column in items[0].keys() %}
+                        <th>{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        {% for key, value in item.items() %}
+                        <td>{{ value }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>No data found in this table.</p>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

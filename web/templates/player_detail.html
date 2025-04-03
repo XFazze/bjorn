@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ player.discord_name }} - Player Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>{{ player.discord_name }}</h1>
+        <p class="lead">Player Details</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('players') }}" class="btn btn-secondary">Back to Players</a>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Player Statistics</div>
+            <div class="card-body">
+                <p><strong>Discord ID:</strong> {{ player.discord_id }}</p>
+                <p><strong>MMR:</strong> {{ player.mmr }}</p>
+                <p><strong>Wins:</strong> {{ player.wins }}</p>
+                <p><strong>Losses:</strong> {{ player.losses }}</p>
+                <p><strong>Win Rate:</strong> {{ win_rate }}%</p>
+                <p><strong>Total Games:</strong> {{ player.wins + player.losses }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        {% if mmr_data %}
+        <div class="card">
+            <div class="card-header">
+                MMR History
+                <div class="float-end">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('player_detail', player_id=player.discord_id, view='date') }}" 
+                           class="btn btn-outline-primary {{ 'active' if view_type == 'date' or not view_type }}">By Date</a>
+                        <a href="{{ url_for('player_detail', player_id=player.discord_id, view='game') }}" 
+                           class="btn btn-outline-primary {{ 'active' if view_type == 'game' }}">By Game</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="mmr-graph"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-5">
+    <h2>Match History</h2>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Match ID</th>
+                    <th>Date</th>
+                    <th>Team 1</th>
+                    <th>Team 2</th>
+                    <th>Winner</th>
+                    <th>Result</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr class="{{ 'table-success' if match.player_won else 'table-danger' }}">
+                    <td>{{ match.match_id }}</td>
+                    <td>{{ match.timestamp|datetime }}</td>
+                    <td>
+                        {% for player_name in match.team1_players %}
+                            {% if player_name == player.discord_name %}
+                                <strong>{{ player_name }}</strong>
+                            {% else %}
+                                {{ player_name }}
+                            {% endif %}
+                            {% if not loop.last %}<br>{% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for player_name in match.team2_players %}
+                            {% if player_name == player.discord_name %}
+                                <strong>{{ player_name }}</strong>
+                            {% else %}
+                                {{ player_name }}
+                            {% endif %}
+                            {% if not loop.last %}<br>{% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>Team {{ match.winner }}</td>
+                    <td>{{ "Win" if match.player_won else "Loss" }}</td>
+                    <td>
+                        <a href="{{ url_for('match_detail', match_id=match.match_id) }}" class="btn btn-sm btn-primary">Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if mmr_data %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if view_type == 'game' %}
+            var graphData = {{ mmr_by_game_data|safe }};
+        {% else %}
+            var graphData = {{ mmr_data|safe }};
+        {% endif %}
+        Plotly.newPlot('mmr-graph', graphData.data, graphData.layout);
+    });
+</script>
+{% endif %}
+{% endblock %}

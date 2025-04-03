@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+
+{% block title %}Players - Bjorn Bot Dashboard{% endblock %}
+
+{% block content %}
+<div class="row align-items-center">
+    <div class="col-md-7">
+        <h1><i class="fas fa-users me-2"></i>Players</h1>
+        <p class="lead">View all players registered in the system</p>
+    </div>
+    <div class="col-md-5">
+        <div class="search-container">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-end-0">
+                    <i class="fas fa-search text-muted"></i>
+                </span>
+                <input type="text" id="playerSearch" class="form-control border-start-0" placeholder="Search players...">
+                <button class="btn btn-primary d-none" id="clearSearch" type="button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Players Section -->
+<h5 class="section-header mt-4 mb-3">
+    <i class="fas fa-trophy"></i>Top Players
+</h5>
+<div class="row mb-4">
+    {% set top_players = players[:3] %}
+    {% for player in top_players %}
+    <div class="col-md-4">
+        <div class="card top-player-card">
+            <div class="card-body text-center">
+                <div class="top-player-rank">{{ loop.index }}</div>
+                <h4 class="card-title mt-2">{{ player.discord_name }}</h4>
+                <div class="tier-badge tier-{{ player.mmr|mmr_tier }}">
+                    <i class="fas fa-medal me-1"></i>{{ player.mmr|mmr_tier_name }}
+                </div>
+                <div class="player-stats">
+                    <div class="mmr-value">{{ player.mmr }} MMR</div>
+                    <div class="win-rate-pill">
+                        <span class="win"><i class="fas fa-check-circle me-1"></i>{{ player.wins }}W</span>
+                        <span class="loss"><i class="fas fa-times-circle me-1"></i>{{ player.losses }}L</span>
+                    </div>
+                    <div class="win-rate">
+                        <i class="fas fa-percentage me-1"></i>{{ player.win_rate }}% Win Rate
+                    </div>
+                </div>
+                <a href="{{ url_for('player_detail', player_id=player.discord_id) }}" 
+                   class="btn btn-primary mt-3">
+                   <i class="fas fa-user me-1"></i>View Profile
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <i class="fas fa-list me-2"></i>All Players 
+                <span class="badge bg-secondary ms-2" id="player-count">{{ players|length }}</span>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary active" 
+                            onclick="sortTable('mmr', 'desc', event)">
+                            <i class="fas fa-sort-numeric-down me-1"></i>MMR
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" 
+                            onclick="sortTable('win_rate', 'desc', event)">
+                            <i class="fas fa-percentage me-1"></i>Win Rate
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" 
+                            onclick="sortTable('games', 'desc', event)">
+                            <i class="fas fa-gamepad me-1"></i>Games
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="playersTable">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>MMR</th>
+                        <th>Wins</th>
+                        <th>Losses</th>
+                        <th>Win Rate</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player in players %}
+                    <tr data-mmr="{{ player.mmr }}" data-win-rate="{{ player.win_rate }}" 
+                        data-games="{{ player.wins + player.losses }}">
+                        <td class="rank-cell">{{ loop.index }}</td>
+                        <td>
+                            <div class="player-name">
+                                {{ player.discord_name }}
+                                <span class="tier-indicator tier-{{ player.mmr|mmr_tier }}" 
+                                      title="{{ player.mmr|mmr_tier_name }} Tier"></span>
+                            </div>
+                        </td>
+                        <td><strong>{{ player.mmr }}</strong></td>
+                        <td><span class="text-success">{{ player.wins }}</span></td>
+                        <td><span class="text-danger">{{ player.losses }}</span></td>
+                        <td>
+                            <span class="win-rate-badge {% if player.win_rate >= 60 %}win-rate-high{% elif player.win_rate >= 45 %}win-rate-medium{% else %}win-rate-low{% endif %}">
+                                <i class="fas {% if player.win_rate >= 60 %}fa-trophy{% elif player.win_rate >= 45 %}fa-chart-line{% else %}fa-chart-line{% endif %} me-1"></i>
+                                {{ player.win_rate }}%
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('player_detail', player_id=player.discord_id) }}" 
+                               class="btn btn-sm btn-primary">
+                               <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Player search functionality
+        const searchInput = document.getElementById('playerSearch');
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const playerCount = document.getElementById('player-count');
+        
+        searchInput.addEventListener('keyup', function() {
+            const searchText = this.value.toLowerCase();
+            const playerTable = document.getElementById('playersTable');
+            const rows = playerTable.getElementsByTagName('tr');
+            
+            let resultsCount = 0;
+            
+            for (let i = 1; i < rows.length; i++) {
+                const playerName = rows[i].getElementsByTagName('td')[1].textContent.toLowerCase();
+                if (playerName.includes(searchText)) {
+                    rows[i].style.display = '';
+                    resultsCount++;
+                    
+                    // Highlight the matching text if searching
+                    if (searchText.length > 0) {
+                        const nameCell = rows[i].getElementsByTagName('td')[1].querySelector('.player-name');
+                        const name = nameCell.textContent.trim();
+                        const regex = new RegExp(searchText, 'gi');
+                        
+                        // Save the tier indicator
+                        const tierIndicator = nameCell.querySelector('.tier-indicator').outerHTML;
+                        
+                        // Update the cell content with highlighting
+                        nameCell.innerHTML = name.replace(regex, match => `<mark>${match}</mark>`) + tierIndicator;
+                    }
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+            
+            // Update player count
+            playerCount.textContent = resultsCount;
+            
+            // Show/hide clear button
+            if (searchText.length > 0) {
+                clearSearchBtn.classList.remove('d-none');
+            } else {
+                clearSearchBtn.classList.add('d-none');
+            }
+            
+            // Show "no results" message if needed
+            const tableBody = playerTable.querySelector('tbody');
+            let noResultsRow = document.getElementById('no-results-row');
+            
+            if (resultsCount === 0 && searchText.length > 0) {
+                if (!noResultsRow) {
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'no-results-row';
+                    const cell = document.createElement('td');
+                    cell.colSpan = 7;
+                    cell.className = 'text-center py-4';
+                    cell.innerHTML = `<div class="alert alert-info mb-0">
+                                        <i class="fas fa-search me-2"></i>No players found matching "${searchText}"
+                                     </div>`;
+                    noResultsRow.appendChild(cell);
+                    tableBody.appendChild(noResultsRow);
+                }
+            } else if (noResultsRow) {
+                noResultsRow.remove();
+            }
+        });
+        
+        // Clear search functionality
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                // Trigger the search event to reset the table
+                searchInput.dispatchEvent(new Event('keyup'));
+                searchInput.focus();
+            });
+        }
+    });
+    
+    // Fixed table sorting functionality with proper attribute handling
+    function sortTable(column, direction, event) {
+        const table = document.getElementById('playersTable');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr:not(#no-results-row)'));
+        
+        // Update active button
+        const buttons = document.querySelectorAll('.btn-group .btn-outline-primary');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        
+        // Make sure we have a valid event target
+        if (event && event.target) {
+            const targetButton = event.target.closest('.btn');
+            if (targetButton) {
+                targetButton.classList.add('active');
+            }
+        }
+        
+        // Convert underscores to hyphens for data attribute names (HTML uses hyphens)
+        const attributeName = `data-${column.replace('_', '-')}`;
+        
+        console.log(`Sorting by ${column} using attribute: ${attributeName}`);
+        
+        // Sort rows based on data attributes
+        rows.sort((a, b) => {
+            const aValue = parseFloat(a.getAttribute(attributeName));
+            const bValue = parseFloat(b.getAttribute(attributeName));
+            
+            // Debug log to check values for the first few rows
+            if (rows.indexOf(a) < 5) {
+                console.log(`Row ${rows.indexOf(a)}: ${attributeName} = ${aValue}, comparing with ${bValue}`);
+            }
+            
+            // Handle NaN values gracefully
+            if (isNaN(aValue)) return direction === 'desc' ? 1 : -1;
+            if (isNaN(bValue)) return direction === 'desc' ? -1 : 1;
+            
+            return direction === 'desc' ? bValue - aValue : aValue - bValue;
+        });
+        
+        // Update ranks with animation
+        rows.forEach((row, index) => {
+            // Add animation class
+            row.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(5px)';
+            
+            // Update rank
+            row.querySelector('.rank-cell').textContent = index + 1;
+            
+            // Reattach to tbody
+            tbody.appendChild(row);
+            
+            // Force reflow
+            void row.offsetWidth;
+            
+            // Remove animation 
+            setTimeout(() => {
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 30);
+        });
+    }
+</script>
+{% endblock %}

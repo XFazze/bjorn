@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bjorn Bot Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- Add Font Awesome for better icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Add Google Fonts for improved typography -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    {% block head %}{% endblock %}
+    <style>
+        body {
+            font-family: 'Inter', 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-robot me-2"></i>Bjorn Bot Dashboard
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" href="{{ url_for('index') }}">
+                            <i class="fas fa-home me-1"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'players' }}" href="{{ url_for('players') }}">
+                            <i class="fas fa-users me-1"></i> Players
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'matches' }}" href="{{ url_for('matches') }}">
+                            <i class="fas fa-gamepad me-1"></i> Matches
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'stats' }}" href="{{ url_for('stats') }}">
+                            <i class="fas fa-chart-bar me-1"></i> Statistics
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'config' }}" href="{{ url_for('config') }}">
+                            <i class="fas fa-cog me-1"></i> Config
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="footer mt-5 py-3">
+        <div class="container text-center">
+            <span>Bjorn Bot Dashboard &copy; 2024</span>
+            <div class="mt-2">
+                <a href="https://github.com/XFazze/bjorn" class="text-muted mx-1" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-github"></i>
+                </a>
+                <a href="https://discord.com/oauth2/authorize?client_id=775007176157954058" class="text-muted mx-1" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-discord"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Dark mode toggle button -->
+    <button class="dark-mode-toggle" id="darkModeToggle">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Add a global script for UI improvements -->
+    <script>
+        // Add active class to current nav item
+        document.addEventListener('DOMContentLoaded', function() {
+            // Enhance cards with animation
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.05}s`;
+                card.style.animation = 'fadeIn 0.5s ease forwards';
+            });
+            
+            // Add ripple effect to buttons
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    // Only apply if the clicked element is the button itself, not a child
+                    if (e.currentTarget === e.target || e.target.tagName !== 'I') {
+                        const rect = this.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        
+                        const circle = document.createElement('span');
+                        circle.classList.add('ripple');
+                        circle.style.left = x + 'px';
+                        circle.style.top = y + 'px';
+                        
+                        this.appendChild(circle);
+                        
+                        setTimeout(() => {
+                            circle.remove();
+                        }, 600);
+                    }
+                });
+            });
+            
+            // Dark mode toggle functionality (visual only, doesn't actually change theme)
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            if (darkModeToggle) {
+                darkModeToggle.addEventListener('click', function() {
+                    // Toggle icon
+                    const icon = this.querySelector('i');
+                    if (icon.classList.contains('fa-moon')) {
+                        icon.classList.remove('fa-moon');
+                        icon.classList.add('fa-sun');
+                        // Show animation
+                        this.classList.add('pulse');
+                        setTimeout(() => {
+                            this.classList.remove('pulse');
+                        }, 1000);
+                    } else {
+                        icon.classList.remove('fa-sun');
+                        icon.classList.add('fa-moon');
+                    }
+                    
+                    // Create a notification
+                    const notification = document.createElement('div');
+                    notification.classList.add('alert', 'alert-info', 'position-fixed');
+                    notification.style.bottom = '20px';
+                    notification.style.left = '20px';
+                    notification.style.zIndex = '9999';
+                    notification.style.maxWidth = '300px';
+                    notification.innerHTML = '<i class="fas fa-info-circle me-2"></i>Dark mode toggle is a visual demo only.';
+                    
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        notification.style.opacity = '0';
+                        notification.style.transition = 'opacity 0.5s ease';
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 500);
+                    }, 3000);
+                });
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+
+            // Apply the saved theme
+            document.documentElement.classList.toggle('light-mode', currentTheme === 'light');
+            darkModeToggle.querySelector('i').classList.toggle('fa-sun', currentTheme === 'light');
+            darkModeToggle.querySelector('i').classList.toggle('fa-moon', currentTheme !== 'light');
+
+            // Toggle theme on button click
+            darkModeToggle.addEventListener('click', function() {
+                const isLightMode = document.documentElement.classList.toggle('light-mode');
+                localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
+
+                // Update the icon
+                const icon = this.querySelector('i');
+                icon.classList.toggle('fa-sun', isLightMode);
+                icon.classList.toggle('fa-moon', !isLightMode);
+            });
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

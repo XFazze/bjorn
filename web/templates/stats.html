@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Statistics - Bjorn Bot Dashboard{% endblock %}
+
+{% block content %}
+<h1>Statistics</h1>
+<p class="lead">View general statistics about the Bjorn Bot usage</p>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-center mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Total Players</h5>
+                <p class="card-text display-4">{{ total_players }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Total Matches</h5>
+                <p class="card-text display-4">{{ total_matches }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Average MMR</h5>
+                <p class="card-text display-4">{{ avg_mmr }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        {% if mmr_chart %}
+        <div class="card mb-4">
+            <div class="card-header">MMR Distribution</div>
+            <div class="card-body">
+                <div id="mmr-distribution"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-6">
+        {% if monthly_chart %}
+        <div class="card mb-4">
+            <div class="card-header">Matches Per Month</div>
+            <div class="card-body">
+                <div id="monthly-matches"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Latest Matches</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Match ID</th>
+                        <th>Date</th>
+                        <th>Winner</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in latest_matches %}
+                    <tr>
+                        <td>{{ match.match_id }}</td>
+                        <td>{{ match.timestamp|datetime }}</td>
+                        <td>Team {{ match.winner }}</td>
+                        <td>
+                            <a href="{{ url_for('match_detail', match_id=match.match_id) }}" class="btn btn-sm btn-primary">Details</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if mmr_chart %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var mmrData = {{ mmr_chart|safe }};
+        Plotly.newPlot('mmr-distribution', mmrData.data, mmrData.layout);
+    });
+</script>
+{% endif %}
+
+{% if monthly_chart %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var monthlyData = {{ monthly_chart|safe }};
+        Plotly.newPlot('monthly-matches', monthlyData.data, monthlyData.layout);
+    });
+</script>
+{% endif %}
+{% endblock %}

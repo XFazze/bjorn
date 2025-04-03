@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Match {{ match.match_id }} - Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>Match {{ match.match_id }}</h1>
+        <p class="lead">Match Details</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('matches') }}" class="btn btn-secondary">Back to Matches</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Match Information</div>
+    <div class="card-body">
+        <p><strong>Match ID:</strong> {{ match.match_id }}</p>
+        <p><strong>Date:</strong> {{ match.timestamp|datetime }}</p>
+        <p><strong>Winner:</strong> Team {{ match.winner }}</p>
+        <p><strong>MMR Difference:</strong> {{ match.mmr_diff }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card {{ 'border-success' if match.winner == 1 else '' }}">
+            <div class="card-header {{ 'bg-success text-white' if match.winner == 1 else '' }}">
+                Team 1 (Total MMR: {{ team1_mmr }})
+                {% if match.winner == 1 %}<span class="badge bg-light text-dark float-end">WINNER</span>{% endif %}
+            </div>
+            <div class="card-body">
+                {% if team1_players %}
+                <ul class="list-group">
+                    {% for player in team1_players %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ player.discord_name if player.discord_name else 'Unknown Player' }}
+                        {% if player.discord_id %}
+                        <a href="{{ url_for('player_detail', player_id=player.discord_id) }}" class="badge bg-info text-decoration-none">Profile</a>
+                        {% endif %}
+                        <span class="badge bg-primary">MMR: {{ player.mmr }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="alert alert-warning">
+                    No player data found for Team 1.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card {{ 'border-success' if match.winner == 2 else '' }}">
+            <div class="card-header {{ 'bg-success text-white' if match.winner == 2 else '' }}">
+                Team 2 (Total MMR: {{ team2_mmr }})
+                {% if match.winner == 2 %}<span class="badge bg-light text-dark float-end">WINNER</span>{% endif %}
+            </div>
+            <div class="card-body">
+                {% if team2_players %}
+                <ul class="list-group">
+                    {% for player in team2_players %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ player.discord_name if player.discord_name else 'Unknown Player' }}
+                        {% if player.discord_id %}
+                        <a href="{{ url_for('player_detail', player_id=player.discord_id) }}" class="badge bg-info text-decoration-none">Profile</a>
+                        {% endif %}
+                        <span class="badge bg-primary">MMR: {{ player.mmr }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="alert alert-warning">
+                    No player data found for Team 2.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 d-none">
+    <div class="card">
+        <div class="card-header">Debug Information</div>
+        <div class="card-body">
+            <p><strong>Raw Team 1 IDs:</strong> <code>{{ match.team1 }}</code></p>
+            <p><strong>Raw Team 2 IDs:</strong> <code>{{ match.team2 }}</code></p>
+            <p><strong>Team 1 IDs (parsed):</strong> 
+                <code>{{ team1_players|map(attribute='discord_id')|join(', ') }}</code>
+            </p>
+            <p><strong>Team 2 IDs (parsed):</strong> 
+                <code>{{ team2_players|map(attribute='discord_id')|join(', ') }}</code>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Bjorn Bot Dashboard{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Welcome to the Bjorn Bot Dashboard</h1>
+    <p class="lead">View and analyze data from the Bjorn Discord bot</p>
+    <hr class="my-4">
+    <p>Use the navigation menu to explore different data views.</p>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Players</h5>
+                <p class="card-text">View all players registered in the system, their MMR, and other statistics.</p>
+                <a href="{{ url_for('players') }}" class="btn btn-primary">View Players</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Matches</h5>
+                <p class="card-text">Browse all matches, see team compositions, and match results.</p>
+                <a href="{{ url_for('matches') }}" class="btn btn-primary">View Matches</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Statistics</h5>
+                <p class="card-text">Explore general statistics and trends about the bot usage.</p>
+                <a href="{{ url_for('stats') }}" class="btn btn-primary">View Statistics</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

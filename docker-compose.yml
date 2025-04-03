@@ -7,6 +7,9 @@ services:
       - .env.secret
     volumes:
       - ./data:/app/data
+    networks:
+      - bjorn-network
+
   bot_dev:
     build:
       context: '.'
@@ -17,3 +20,51 @@ services:
       - .env.secret
     volumes:
       - ./:/app
+    networks:
+      - bjorn-network
+
+  webapp:
+    build:
+      context: './web'  # Use existing web directory instead of webapp
+    restart: unless-stopped
+    ports:
+      - "5000:5000"  # Flask app runs on port 5000 by default
+    env_file:
+      - .env
+      - .env.secret
+    environment:
+      - DATA_DIR=/app/data/  # Ensure web app knows where to find the data
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    volumes:
+      - ./data:/app/data  # Share the same data directory with the bot
+    depends_on:
+      - bot  # Ensure bot is running before starting webapp
+    networks:
+      - bjorn-network
+
+  webapp_dev:
+    build:
+      context: './web'
+    profiles: [ "dev" ]  # only runs with dev profile
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+      - .env.secret
+    environment:
+      - DATA_DIR=/app/data/
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    volumes:
+      - ./web:/app  # Mount entire web directory for live code changes
+      - ./data:/app/data  # Share the same data directory
+    depends_on:
+      - bot_dev  # Depend on development bot service
+    networks:
+      - bjorn-network
+
+networks:
+  bjorn-network:
+    driver: bridge

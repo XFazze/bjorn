@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Error - Bjorn Bot Dashboard{% endblock %}
+
+{% block content %}
+<div class="alert alert-danger mt-4">
+    <h4 class="alert-heading">Error Occurred</h4>
+    <p>{{ error_message }}</p>
+    <hr>
+    <p class="mb-0">Please check the following:</p>
+    <ul>
+        <li>Make sure the bot database exists</li>
+        <li>Check if the DATA_DIR environment variable is set correctly</li>
+        <li>Verify that the database filenames match (LEAGUE_DB_NAME and CONFIG_DB_NAME)</li>
+        <li>Check file permissions on the database files</li>
+    </ul>
+    <div class="mt-3">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Return to Home</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,964 @@
+/* Discord-inspired theme for Bjorn Bot Dashboard */
+:root {
+    /* Enhanced color palette with more vibrant tones */
+    --discord-primary: #2F3136;       /* Slightly lighter main background */
+    --discord-secondary: #36393F;     /* Lighter cards for better contrast */
+    --discord-tertiary: #202225;      /* Darker elements */
+    --discord-text: #FFFFFF;          /* Brighter text for better readability */
+    --discord-muted: #989AA2;         /* Lighter secondary text */
+    --discord-blurple: #5865F2;       /* Discord's primary color */
+    --discord-blurple-hover: #4752C4; /* Hover state */
+    --discord-link: #00AFF4;          /* Links */
+    --discord-green: #43B581;         /* Success, online */
+    --discord-yellow: #FAA61A;        /* Warning, idle */
+    --discord-red: #F04747;           /* Danger, DND */
+    --discord-input: #40444B;         /* Input fields */
+    --discord-header: #202225;        /* Card headers, nav */
+    
+    /* New accent colors */
+    --discord-accent-1: #7289DA;      /* Softer purple */
+    --discord-accent-2: #747F8D;      /* Neutral accent */
+    --discord-hover-overlay: rgba(255, 255, 255, 0.05); /* Hover overlay */
+    --discord-focus-border: rgba(88, 101, 242, 0.6);    /* Focus border */
+    
+    /* Gradients */
+    --header-gradient: linear-gradient(to right, var(--discord-tertiary), #2a2c31);
+    --card-gradient: linear-gradient(135deg, var(--discord-secondary) 0%, #32353b 100%);
+    
+    /* Shadow values */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
+    
+    /* Animation speeds */
+    --transition-speed-fast: 0.15s;
+    --transition-speed-normal: 0.25s;
+    --transition-speed-slow: 0.4s;
+}
+
+/* Light theme variables */
+:root.light-mode {
+    --discord-primary: #FFFFFF;       /* Light background */
+    --discord-secondary: #F8F9FA;     /* Light cards */
+    --discord-tertiary: #E9ECEF;      /* Lighter elements */
+    --discord-text: #212529;          /* Darker text */
+    --discord-muted: #6C757D;         /* Muted text */
+    --discord-blurple: #5865F2;       /* Same primary color */
+    --discord-blurple-hover: #4752C4; /* Same hover state */
+    --discord-link: #007BFF;          /* Blue links */
+    --discord-green: #28A745;         /* Success */
+    --discord-yellow: #FFC107;        /* Warning */
+    --discord-red: #DC3545;           /* Danger */
+    --discord-input: #FFFFFF;         /* Input fields */
+    --discord-header: #F8F9FA;        /* Card headers, nav */
+
+    --header-gradient: linear-gradient(to right, var(--discord-tertiary), #E9ECEF);
+    --card-gradient: linear-gradient(135deg, var(--discord-secondary) 0%, #FFFFFF 100%);
+    --discord-hover-overlay: rgba(0, 0, 0, 0.05); /* Hover overlay */
+    --discord-focus-border: rgba(0, 123, 255, 0.6); /* Focus border */
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--discord-primary);
+    color: var(--discord-text);
+    font-family: 'Inter', 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Improved Navbar with gradient */
+.navbar-dark.bg-dark {
+    background: var(--header-gradient) !important;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+:root.light-mode .navbar-dark.bg-dark {
+    background: var(--header-gradient);
+    color: var(--discord-text);
+}
+
+:root.light-mode .navbar-dark .navbar-brand {
+    color: var(--discord-text) !important;
+}
+
+:root.light-mode .navbar-dark .nav-link {
+    color: var(--discord-text) !important;
+}
+
+:root.light-mode .navbar-dark .nav-link:hover {
+    color: var(--discord-blurple-hover) !important;
+}
+
+:root.light-mode .navbar-dark .nav-link.active {
+    background: linear-gradient(135deg, var(--discord-blurple), var(--discord-blurple-hover));
+    color: white !important;
+}
+
+.navbar-brand {
+    color: white !important;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.nav-link {
+    position: relative;
+    transition: color var(--transition-speed-fast) ease;
+    padding: 0.5rem 1rem !important;
+    margin: 0 0.25rem;
+}
+
+.nav-link:after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 50%;
+    background-color: var(--discord-blurple);
+    transition: all var(--transition-speed-normal) ease;
+    transform: translateX(-50%);
+}
+
+.nav-link:hover:after {
+    width: 80%;
+}
+
+.nav-link.active:after {
+    width: 80%;
+}
+
+/* Add gradient background to active navigation links */
+.nav-link.active {
+    background: linear-gradient(135deg, var(--discord-blurple), var(--discord-blurple-hover));
+    color: white !important;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+}
+
+/* Enhanced Cards with gradient and hover effects */
+.card {
+    background: var(--card-gradient);
+    border: none;
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+    transition: transform var(--transition-speed-normal), 
+                box-shadow var(--transition-speed-normal);
+    overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg); /* Stronger shadow */
+    transform: translateY(-5px); /* Lift effect */
+}
+
+.card-header {
+    background-color: var(--discord-header);
+    color: var(--discord-text);
+    border-bottom: none;
+    font-weight: 600;
+    padding: 12px 16px;
+}
+
+.card-body {
+    color: var(--discord-text);
+    padding: 20px;
+}
+
+/* Improved footer */
+.footer {
+    margin-top: auto;
+    background: var(--header-gradient);
+    color: var(--discord-text);
+    padding: 20px 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Improve footer links hover effect */
+.footer a:hover {
+    color: var(--discord-blurple);
+    text-decoration: underline;
+}
+
+/* Enhanced List group items */
+.list-group-item {
+    background-color: var(--discord-secondary);
+    color: var(--discord-text);
+    border-color: rgba(255, 255, 255, 0.08);
+    padding: 12px 16px;
+    transition: background-color var(--transition-speed-fast);
+}
+
+.list-group-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Tables with improved styling */
+.table {
+    color: var(--discord-text);
+    background-color: var(--discord-secondary);
+    border-color: rgba(255, 255, 255, 0.05);
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.table thead th {
+    background: linear-gradient(135deg, var(--discord-tertiary), var(--discord-secondary));
+    color: var(--discord-text);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+/* Add hover effect for table rows */
+.table-hover tbody tr:hover {
+    background-color: rgba(88, 101, 242, 0.1); /* Subtle blurple highlight */
+    transition: background-color 0.2s ease;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--discord-hover-overlay);
+}
+
+.table td, .table th {
+    border-top-color: rgba(255, 255, 255, 0.08);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    vertical-align: middle;
+    padding: 12px;
+}
+
+/* Enhanced Buttons & Badges with animations */
+.btn {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    padding: 8px 16px;
+    transition: all 0.3s ease, transform 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px); /* Slight lift effect */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Enhanced shadow */
+}
+
+.btn::after {
+    content: '';
+    display: block;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    transform: scale(10, 10);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
+}
+
+.btn:active::after {
+    transform: scale(0, 0);
+    opacity: 0.2;
+    transition: 0s;
+}
+
+/* Button ripple effect */
+.ripple {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.btn-primary {
+    background-color: var(--discord-blurple);
+    border-color: var(--discord-blurple);
+    box-shadow: 0 2px 5px rgba(88, 101, 242, 0.3);
+}
+
+.btn-primary:hover {
+    background-color: var(--discord-blurple-hover);
+    border-color: var(--discord-blurple-hover);
+    box-shadow: 0 4px 10px rgba(88, 101, 242, 0.4);
+}
+
+.btn-success {
+    background-color: var(--discord-green);
+    border-color: var(--discord-green);
+    box-shadow: 0 2px 5px rgba(67, 181, 129, 0.3);
+}
+
+.btn-success:hover {
+    background-color: #3ca574;
+    border-color: #3ca574;
+    box-shadow: 0 4px 10px rgba(67, 181, 129, 0.4);
+}
+
+.btn-danger {
+    background-color: var(--discord-red);
+    border-color: var(--discord-red);
+    box-shadow: 0 2px 5px rgba(240, 71, 71, 0.3);
+}
+
+.btn-danger:hover {
+    background-color: #d84141;
+    border-color: #d84141;
+    box-shadow: 0 4px 10px rgba(240, 71, 71, 0.4);
+}
+
+.btn-secondary {
+    background-color: var(--discord-accent-2);
+    border-color: var(--discord-accent-2);
+    color: white;
+    box-shadow: 0 2px 5px rgba(116, 127, 141, 0.3);
+}
+
+.btn-secondary:hover {
+    background-color: #646c78;
+    border-color: #646c78;
+    color: white;
+    box-shadow: 0 4px 10px rgba(116, 127, 141, 0.4);
+}
+
+.btn-outline-primary {
+    color: var(--discord-blurple);
+    border-color: var(--discord-blurple);
+    background-color: transparent;
+}
+
+.btn-outline-primary:hover, .btn-outline-primary.active {
+    background-color: var(--discord-blurple);
+    color: white;
+    border-color: var(--discord-blurple);
+    box-shadow: 0 2px 5px rgba(88, 101, 242, 0.3);
+}
+
+.bg-success {
+    background-color: var(--discord-green) !important;
+}
+
+.bg-primary {
+    background-color: var(--discord-blurple) !important;
+}
+
+.bg-info {
+    background-color: var(--discord-link) !important;
+}
+
+.bg-danger {
+    background-color: var(--discord-red) !important;
+}
+
+.bg-warning {
+    background-color: var(--discord-yellow) !important;
+}
+
+.bg-light {
+    background-color: var(--discord-secondary) !important;
+}
+
+.text-muted {
+    color: var(--discord-muted) !important;
+}
+
+/* Badge adjustments */
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.65em;
+}
+
+.badge-primary {
+    background-color: var(--discord-blurple);
+}
+
+/* Enhanced Forms and Inputs */
+.form-control {
+    background-color: var(--discord-input);
+    border-color: rgba(0, 0, 0, 0.2);
+    color: var(--discord-text);
+    padding: 10px 14px;
+    border-radius: 4px;
+    transition: all var(--transition-speed-normal);
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+    background-color: var(--discord-input);
+    color: white;
+    border-color: var(--discord-blurple);
+    box-shadow: 0 0 0 2px var(--discord-focus-border);
+}
+
+.form-control::placeholder {
+    color: var(--discord-muted);
+    opacity: 0.7;
+}
+
+.input-group-text {
+    background-color: var(--discord-input);
+    border-color: rgba(0, 0, 0, 0.2);
+    color: var(--discord-muted);
+}
+
+/* Links */
+a {
+    color: var(--discord-link);
+    text-decoration: none;
+    transition: color var(--transition-speed-fast);
+}
+
+a:hover {
+    color: #00c8ff;
+    text-decoration: underline;
+}
+
+/* Modern jumbotron (replacing Bootstrap 4 jumbotron) */
+.jumbotron {
+    background: linear-gradient(135deg, var(--discord-secondary), var(--discord-tertiary));
+    color: var(--discord-text);
+    border-radius: 8px;
+    padding: 2rem 1.5rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 2rem;
+}
+
+/* Card deck for equal height */
+.row.card-deck .card {
+    height: 100%;
+}
+
+/* Pagination */
+.page-link {
+    background-color: var(--discord-secondary);
+    border-color: var(--discord-tertiary);
+    color: var(--discord-text);
+    margin: 0 2px;
+    transition: all var(--transition-speed-fast);
+}
+
+.page-link:hover {
+    background-color: var(--discord-blurple);
+    color: white;
+    box-shadow: 0 2px 5px rgba(88, 101, 242, 0.3);
+}
+
+.page-item.active .page-link {
+    background-color: var(--discord-blurple);
+    border-color: var(--discord-blurple);
+}
+
+/* Make borders for success cards more Discord-like */
+.card.border-success {
+    border-left: 4px solid var(--discord-green) !important;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+}
+
+/* Responsive plot sizing */
+#mmr-distribution, #monthly-matches, #mmr-graph {
+    height: 400px;
+    width: 100%;
+    background-color: var(--discord-secondary);
+    border-radius: 5px;
+    padding: 16px;
+    transition: all var(--transition-speed-normal);
+}
+
+/* Alerts with Discord styling */
+.alert {
+    border: none;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.5s ease-out;
+}
+
+.alert-danger {
+    background-color: rgba(240, 71, 71, 0.1);
+    color: var(--discord-text);
+    border-left: 4px solid var(--discord-red);
+}
+
+.alert-success {
+    background-color: rgba(67, 181, 129, 0.1);
+    color: var (--discord-text);
+    border-left: 4px solid var(--discord-green);
+}
+
+.alert-warning {
+    background-color: rgba(250, 166, 26, 0.1);
+    color: var(--discord-text);
+    border-left: 4px solid var(--discord-yellow);
+}
+
+.alert-info {
+    background-color: rgba(0, 175, 244, 0.1);
+    color: var(--discord-text);
+    border-left: 4px solid var(--discord-link);
+}
+
+/* Table variants for Discord theming */
+.table-success, .table-success>td, .table-success>th {
+    background-color: rgba(67, 181, 129, 0.2);
+    border-color: rgba(67, 181, 129, 0.3);
+}
+
+.table-danger, .table-danger>td, .table-danger>th {
+    background-color: rgba(240, 71, 71, 0.2);
+    border-color: rgba(240, 71, 71, 0.3);
+}
+
+.table-info, .table-info>td, .table-info>th {
+    background-color: rgba(0, 175, 244, 0.2);
+    border-color: rgba(0, 175, 244, 0.3);
+}
+
+.table-warning, .table-warning>td, .table-warning>th {
+    background-color: rgba(250, 166, 26, 0.2);
+    border-color: rgba(250, 166, 26, 0.3);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--discord-tertiary);
+}
+
+.table-striped tbody tr:nth-of-type(even) {
+    background-color: var(--discord-secondary);
+}
+
+.table-responsive {
+    background-color: var(--discord-secondary);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+/* Add light border around the table */
+.table-responsive .table {
+    margin-bottom: 0;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Lead text */
+.lead {
+    color: var(--discord-muted);
+    font-weight: 400;
+    margin-bottom: 1.5rem;
+}
+
+/* Top Players Cards - Enhanced */
+.top-player-card {
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition-speed-normal), 
+                box-shadow var(--transition-speed-normal);
+    border-left: none !important;
+    background: linear-gradient(135deg, var(--discord-secondary) 0%, #32353b 100%);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+}
+
+.top-player-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 16px rgba(88, 101, 242, 0.4); /* Blurple glow */
+}
+
+.top-player-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--discord-blurple);
+}
+
+.top-player-card:nth-child(1)::before {
+    background: linear-gradient(to right, #FFD700, #FFC107);
+}
+
+.top-player-card:nth-child(2)::before {
+    background: linear-gradient(to right, #C0C0C0, #A9A9A9);
+}
+
+.top-player-card:nth-child(3)::before {
+    background: linear-gradient(to right, #CD7F32, #A0522D);
+}
+
+.top-player-rank {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--discord-blurple);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+}
+
+/* Enhanced Tier Badges with gradients */
+.tier-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin: 5px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tier-bronze {
+    background: linear-gradient(135deg, #cd7f32 0%, #a05a2c 100%);
+    color: white;
+}
+
+.tier-silver {
+    background: linear-gradient(135deg, #e5e4e2 0%, #b8b8b8 100%);
+    color: #333;
+}
+
+.tier-gold {
+    background: linear-gradient(135deg, #ffd700 0%, #ffc107 100%);
+    color: #333;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+.tier-platinum {
+    background: linear-gradient(135deg, #e5e4e2 0%, #b8b8b8 100%);
+    color: #333;
+}
+
+.tier-diamond {
+    background: linear-gradient(135deg, #b9f2ff 0%, #86c5da 100%);
+    color: #333;
+}
+
+.tier-master {
+    background: linear-gradient(135deg, #ff44ad 0%, #c31b8a 100%);
+    color: white;
+}
+
+.tier-grandmaster {
+    background: linear-gradient(135deg, #ff4545 0%, #c41616 100%);
+    color: white;
+}
+
+/* Enhanced win-rate pill */
+.win-rate-pill {
+    display: inline-flex;
+    background-color: var(--discord-tertiary);
+    border-radius: 50px;
+    overflow: hidden;
+    margin: 10px 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.win-rate-pill .win {
+    background: linear-gradient(to right, #43B581, #3ca574);
+    padding: 5px 12px;
+    font-weight: bold;
+}
+
+.win-rate-pill .loss {
+    padding: 5px 12px;
+    font-weight: bold;
+}
+
+/* Improved win-rate progress bar */
+.win-rate-progress {
+    height: 10px;
+    border-radius: 10px;
+    background-color: var(--discord-tertiary);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    margin: 8px 0;
+    overflow: hidden;
+}
+
+.win-rate-progress .progress-bar {
+    background: linear-gradient(to right, #43B581, #3ca574);
+    border-radius: 10px;
+    min-width: 2em;
+    transition: width 0.6s ease;
+}
+
+/* Player table enhancements */
+.rank-cell {
+    text-align: center;
+    font-weight: bold;
+}
+
+.player-name {
+    display: flex;
+    align-items: center;
+}
+
+.tier-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 5px;
+}
+
+/* Improved scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--discord-primary);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--discord-accent-2);
+    border-radius: 5px;
+    transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--discord-muted);
+}
+
+/* Improve animations for page loads and transitions */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.container {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Add highlighting for search results */
+mark {
+    background-color: rgba(88, 101, 242, 0.3);
+    color: white;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+/* Section headers */
+.section-header {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--discord-muted);
+    margin-bottom: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.section-header i {
+    margin-right: 0.5rem;
+}
+
+/* Stat cards for dashboard */
+.stat-card {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 8px;
+    transition: all var(--transition-speed-normal);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-card .card-title {
+    color: var(--discord-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.stat-card .display-4 {
+    font-weight: 700;
+    margin-bottom: 0;
+    font-size: 2.5rem;
+}
+
+/* Search container improvements */
+.search-container {
+    margin: 1rem 0;
+}
+
+.search-container .input-group {
+    box-shadow: var(--shadow-sm);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Better mobile responsiveness */
+@media (max-width: 767px) {
+    .card-header {
+        padding: 10px 14px;
+    }
+    
+    .card-body {
+        padding: 15px;
+    }
+    
+    .top-player-card {
+        margin-bottom: 20px;
+    }
+    
+    .btn-group {
+        margin-top: 10px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .btn-group .btn {
+        flex: 1;
+    }
+    
+    .table-responsive {
+        border-radius: 4px;
+    }
+    
+    /* Improved mobile spacing */
+    h1, .h1 {
+        font-size: 1.8rem;
+    }
+    
+    .lead {
+        font-size: 1rem;
+    }
+    
+    .container {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
+
+/* Dark mode toggle */
+.dark-mode-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: var(--discord-blurple);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+    transition: all var(--transition-speed-normal);
+    border: 2px solid transparent;
+    background-image: linear-gradient(var(--discord-primary), var(--discord-primary)),
+                      linear-gradient(135deg, var(--discord-blurple), var(--discord-blurple-hover));
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+}
+
+.dark-mode-toggle:hover {
+    transform: scale(1.1);
+    background: var(--discord-blurple-hover);
+    box-shadow: 0 0 10px var(--discord-blurple);
+}
+
+/* Win Rate Badge Styling - Replaces progress bar */
+.win-rate-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all var(--transition-speed-fast) ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.win-rate-high {
+    background: linear-gradient(135deg, #43B581, #3ca574);
+    color: white;
+}
+
+.win-rate-medium {
+    background: linear-gradient(135deg, #FAA61A, #e09615);
+    color: white;
+}
+
+.win-rate-low {
+    background: linear-gradient(135deg, #F04747, #d84141);
+    color: white;
+}
+
+.win-rate-badge i {
+    margin-right: 5px;
+}
+
+/* Remove the progress bar styles that are no longer needed */
+.win-rate-progress {
+    /* Keeping this for backward compatibility but not using it */
+    display: none;
+}
+
+/* Improve the player table layout */
+.table td {
+    vertical-align: middle;
+}
+
+/* Improved animation for win rate badges */
+.win-rate-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* Better mobile styling for player table */
+@media (max-width: 767px) {
+    .win-rate-badge {
+        padding: 3px 8px;
+        font-size: 0.75rem;
+    }
+    
+    .table td {
+        padding: 10px 6px;
+    }
+}
