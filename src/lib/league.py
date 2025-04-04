@@ -964,6 +964,7 @@ class MatchControlView(View):  # ändra till playersembed
         match_message: Message,
         match_embed: Embed,
         ingame_ping_message: Message | None,
+        creator: Member = None,
     ):
         super().__init__(timeout=7200)
         self.current_embed = None
@@ -972,6 +973,7 @@ class MatchControlView(View):  # ändra till playersembed
         self.match_message = match_message
         self.match_embed = match_embed
         self.ingame_ping_message = ingame_ping_message
+        self.creator = creator
         config = ConfigDatabase(bot)
         try:
             ingame_role = config.get_items_by(ConfigTables.INGAMEROLE, guild.id)
@@ -996,6 +998,11 @@ class MatchControlView(View):  # ändra till playersembed
         self.add_item(discard_button)
 
     async def _blue_win_callback(self, interaction: Interaction):
+        if interaction.user != self.creator:
+            await interaction.response.send_message(
+                "You are not authorized to use this button.", ephemeral=True
+            )
+            return
         await interaction.response.defer()
         try:
             await self.remove_ingame_role(interaction)
@@ -1018,6 +1025,11 @@ class MatchControlView(View):  # ändra till playersembed
                 pass
 
     async def _red_win_callback(self, interaction: Interaction):
+        if interaction.user != self.creator:
+            await interaction.response.send_message(
+                "You are not authorized to use this button.", ephemeral=True
+            )
+            return
         await interaction.response.defer()
         try:
             await self.remove_ingame_role(interaction)
@@ -1040,6 +1052,11 @@ class MatchControlView(View):  # ändra till playersembed
                 pass
 
     async def _discard_callback(self, interaction: Interaction):
+        if interaction.user != self.creator:
+            await interaction.response.send_message(
+                "You are not authorized to use this button.", ephemeral=True
+            )
+            return
         await interaction.response.defer()
         try:
             await self.remove_ingame_role(interaction)
@@ -1254,6 +1271,7 @@ class QueueControlView(View):
         queue_message: Message,
         queue_view: QueueView,
         voice: VoiceChannel | None = None,
+        creator: Member = None,
     ):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot)
@@ -1261,6 +1279,7 @@ class QueueControlView(View):
         self.queue_message = queue_message
         self.queue_view = queue_view
         self.voice = voice
+        self.creator = creator
 
         start_button = Button(
             label="Start match",
@@ -1298,6 +1317,11 @@ class QueueControlView(View):
             )
 
     async def _start_callback(self, interaction: Interaction):
+        if interaction.user != self.creator:
+            await interaction.response.send_message(
+                "You are not authorized to use this button.", ephemeral=True
+            )
+            return
         if len(self.queue_view.queue) < 2:
             await interaction.response.send_message(
                 "Not enough players in queue", ephemeral=True
@@ -1328,18 +1352,28 @@ class QueueControlView(View):
         await self.queue_message.delete()
 
     async def _discard_callback(self, interaction: Interaction):
+        if interaction.user != self.creator:
+            await interaction.response.send_message(
+                "You are not authorized to use this button.", ephemeral=True
+            )
+            return
         await interaction.response.defer()
         await self.queue_message.delete()
 
     async def _update_remove_list_callback(self, interaction: Interaction):
+        if interaction.user != self.creator:
+            await interaction.response.send_message(
+                "You are not authorized to use this button.", ephemeral=True
+            )
+            return
         await interaction.response.defer()
-        message = await interaction.original_response()
-        await message.edit(
+        await self.queue_message.edit(
             view=QueueControlView(
                 self.bot,
                 self.queue_message,
                 self.queue_view,
                 voice=self.voice,
+                creator=self.creator,
             )
         )
 
@@ -1386,25 +1420,14 @@ async def start_match(
 
     # Create the match control view
     view = MatchControlView(
-        bot, guild, match, match_message, embed, ingame_ping_message
+        bot, guild, match, match_message, embed, ingame_ping_message, creator=creator
     )
 
-    # Send the control panel to the creator (handle potential interaction timeouts)
+    # Send the control panel to the creator as a normal message
     try:
-        if hasattr(interaction, "followup") and hasattr(interaction.followup, "send"):
-            await interaction.followup.send("Match Control", view=view, ephemeral=True)
-        else:
-            # If interaction doesn't have followup.send, send to channel instead
-            control_msg = await channel.send("Match Control")
-            await control_msg.edit(view=view)
+        await channel.send("Match Control", view=view)
     except Exception as e:
-        logger.warning(
-            f"Couldn't send match control via interaction, sending to channel: {e}"
-        )
-        try:
-            await channel.send("Match Control", view=view)
-        except Exception as e2:
-            logger.error(f"Couldn't send match control to channel either: {e2}")
+        logger.error(f"Couldn't send match control to channel: {e}")
 
     # Move players to voice channels if configured
     categories = config.get_items_by(ConfigTables.BETTERVC, guild.id)
