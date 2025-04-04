@@ -2,6 +2,29 @@
 
 {% block title %}{{ player.discord_name }} - Player Details{% endblock %}
 
+{% block head %}
+<style>
+    .emoji-font {
+        font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+        font-size: 0.9em;
+        margin-left: 4px;
+    }
+    .tier-badge {
+        display: inline;
+        background: none;
+        border: none;
+        padding: 0;
+        box-shadow: none;
+    }
+    .rank-separator {
+        margin: 0 6px;
+        opacity: 0.5;
+        font-size: 0.8em;
+        color: var(--discord-muted);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-md-8">
@@ -19,6 +42,11 @@
             <div class="card-header">Player Statistics</div>
             <div class="card-body">
                 <p><strong>Discord ID:</strong> {{ player.discord_id }}</p>
+                <p>
+                    <strong>Tier:</strong> 
+                    <span class="rank-separator">•</span>
+                    <span class="tier-badge emoji-font">{{ player.mmr|mmr_tier }}</span>
+                </p>
                 <p><strong>MMR:</strong> {{ player.mmr }}</p>
                 <p><strong>Wins:</strong> {{ player.wins }}</p>
                 <p><strong>Losses:</strong> {{ player.losses }}</p>
