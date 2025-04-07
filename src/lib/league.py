@@ -1280,6 +1280,7 @@ class QueueControlView(View):
         self.queue_view = queue_view
         self.voice = voice
         self.creator = creator
+        self.move_players = False
 
         start_button = Button(
             label="Start match",
@@ -1296,7 +1297,16 @@ class QueueControlView(View):
         )
         discard_button.callback = self._discard_callback
         self.add_item(discard_button)
-
+        
+        # Add a button to toggle the move players setting
+        move_players_button = Button(
+            label="Toggle Voice Split: Off",
+            style=ButtonStyle.secondary,
+            row=1,
+        )
+        move_players_button.callback = self._toggle_move_players
+        self.add_item(move_players_button)
+        
         update_remove_list_button = Button(
             label="Update remove list",
             style=ButtonStyle.blurple,
@@ -1315,7 +1325,20 @@ class QueueControlView(View):
                     self.voice,
                 )
             )
-
+    async def _toggle_move_players(self, interaction: Interaction):
+        self.move_players = not self.move_players
+        status = "On" if self.move_players else "Off"
+        style = ButtonStyle.primary if self.move_players else ButtonStyle.secondary
+        
+        # Update button label and style
+        for item in self.children:
+            if isinstance(item, Button) and item.callback == self._toggle_move_players:
+                item.label = f"Toggle Voice Split: {status}"
+                item.style = style
+                break
+                
+        await interaction.response.edit_message(view=self)
+    
     async def _start_callback(self, interaction: Interaction):
         if interaction.user != self.creator:
             await interaction.response.send_message(
@@ -1348,6 +1371,7 @@ class QueueControlView(View):
             interaction.user,
             interaction.channel,
             interaction,
+            move_players_setting=self.move_players,
         )
         await self.queue_message.delete()
 
@@ -1386,7 +1410,7 @@ async def start_match(
     creator: Member,
     channel: TextChannel,
     interaction: Interaction,
-    move_players_setting=True,
+    move_players_setting=False,
 ):
     match = CustomMatch(bot, creator, team1, team2)
     config = ConfigDatabase(bot)
