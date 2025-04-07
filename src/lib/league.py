@@ -792,7 +792,6 @@ class MatchViewDone(View):
         self.current_embed = None
         self.bot = bot
         self.match = match
-
         rematch_button = Button(label="Rematch", style=ButtonStyle.blurple)
         rematch_button.callback = self._rematch_callback
         self.add_item(rematch_button)
@@ -947,6 +946,7 @@ class QueueControlView(View):
         self.queue_message = queue_message
         self.queue_view = queue_view
         self.voice = voice
+        self.move_players = False
         start_button = Button(
             label="Start match",
             style=ButtonStyle.green,
@@ -954,7 +954,7 @@ class QueueControlView(View):
         )
         start_button.callback = self._start_callback
         self.add_item(start_button)
-
+        
         discard_button = Button(
             label="Discard",
             style=ButtonStyle.red,
@@ -962,6 +962,14 @@ class QueueControlView(View):
         )
         discard_button.callback = self._discard_callback
         self.add_item(discard_button)
+        
+        move_players_button = Button(
+            label=f"Toggle Voice Split: Off",
+            style=ButtonStyle.secondary,
+            row=1,
+        )
+        move_players_button.callback = self._move_players_callback
+        self.add_item(move_players_button)
 
         update_remove_list_button = Button(
             label="Update remove list",
@@ -981,7 +989,19 @@ class QueueControlView(View):
                     self.voice,
                 )
             )
-
+    async def _toggle_move_players(self, interaction: Interaction):
+        self.move_players = not self.move_players
+        status = "On" if self.move_players else "Off"
+        style = ButtonStyle.primary if self.move_players else ButtonStyle.secondary
+        
+        # Update button label and style
+        for item in self.children:
+            if isinstance(item, Button) and item.callback == self._toggle_move_players:
+                item.label = f"Toggle Voice Split: {status}"
+                item.style = style
+                break
+                
+        await interaction.response.edit_message(view=self)
     async def _start_callback(self, interaction: Interaction):
         if len(self.queue_view.queue) < 2:
             await interaction.response.send_message(
@@ -1001,6 +1021,7 @@ class QueueControlView(View):
             interaction.user,
             interaction.channel,
             interaction,
+            move_players_setting=self.move_players,
         )
 
     async def _discard_callback(self, interaction: Interaction):
@@ -1028,7 +1049,7 @@ async def start_match(
     creator: Member,
     channel: TextChannel,
     interaction: Interaction,
-    move_players_setting=True,
+    move_players_setting=False,
 ):
     match = CustomMatch(bot, creator, team1, team2)
 
