@@ -447,16 +447,28 @@ class StatisticsGeneralView(View):
         await message.edit(embed=self.current_embed, view=self)
 
     async def _sort_callback(self, interaction: Interaction):
+        # First update button to show loading state
+        self.sort_button.label = "Sorting..."
+        self.sort_button.disabled = True
         await interaction.response.defer()
+        
+        # Precompute match counts if not already cached
+        if not hasattr(self, 'match_counts_cache') or not self.match_counts_cache:
+            self.match_counts_cache = {}
+            for p in self.players:
+                self.match_counts_cache[p.discord_id] = len(p.get_matches())
+        
+        # Use cached match counts for sorting
         normal_list = [
             sorted(self.players, key=lambda p: p.discord_name),
             sorted(self.players, key=lambda p: -p.win_rate),
-            sorted(self.players, key=lambda p: -len(p.get_matches())),
+            sorted(self.players, key=lambda p: -self.match_counts_cache.get(p.discord_id, 0)),
         ]
         extended_list = [
             sorted(self.players, key=lambda p: -p.mmr),
             sorted(self.players, key=lambda p: p.discord_name),
         ]
+        # Handle different sort states
         if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
             self.sort_button.label = "MMR"
             self.players = extended_list[0]
@@ -491,7 +503,10 @@ class StatisticsGeneralView(View):
             self.current_embed = StatisticsGeneralEmbed(self.players)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
-
+            
+        # Reset button state but with the new label
+        self.sort_button.disabled = False
+        
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
 
@@ -1008,11 +1023,18 @@ class QueueControlView(View):
                 "Not enough players in queue", ephemeral=True
             )
             return
-
+        
+        # Update button to show loading state
+        for item in self.children:
+            if isinstance(item, Button) and item.callback == self._start_callback:
+                item.label = "Creating teams..."
+                item.disabled = True
+                break
+        await interaction.response.edit_message(view=self)
+        
         team1, team2 = generate_teams(
             [Player(self.bot, p.id, False) for p in self.queue_view.queue]
         )
-        await interaction.response.defer()
         await start_match(
             team1,
             team2,
@@ -1023,6 +1045,13 @@ class QueueControlView(View):
             interaction,
             move_players_setting=self.move_players,
         )
+        # Reset the button after generating teams
+        for item in self.children:
+            if isinstance(item, Button) and item.callback == self._start_callback:
+                item.label = "Start match"
+                item.disabled = False
+                break
+        await interaction.edit_original_response(view=self)
 
     async def _discard_callback(self, interaction: Interaction):
         await interaction.response.defer()

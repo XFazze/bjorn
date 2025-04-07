@@ -300,9 +300,18 @@ class league_cog(commands.Cog):
     @statistics.command(name="general", description=f"Displays all players.")
     async def general(self, ctx: commands.Context):
         try:
-            await ctx.interaction.response.send_message(
-                "League player general statistics loading", ephemeral=True
+            # Create a loading embed instead of just text
+            loading_embed = discord.Embed(
+                title="League Statistics Loading...",
+                description="Please wait while we gather player statistics...",
+                color=0xFFA500  # Orange color for loading state
             )
+            loading_embed.set_footer(text="This may take a few moments")
+            
+            # Send the loading embed
+            await ctx.interaction.response.send_message(embed=loading_embed, ephemeral=True)
+            
+            # Fetch players and sort them
             players = self.db.get_all_players()
             players = sorted(players, key=lambda p: -len(p.get_matches()))
 
