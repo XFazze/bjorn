@@ -495,14 +495,30 @@ class league_cog(commands.Cog):
     @statistics.command(name="general", description=f"Displays all players.")
     async def general(self, ctx: commands.Context):
         try:
-            await ctx.interaction.response.send_message(
-                "League player general statistics loading", ephemeral=True
+            # Create a loading embed instead of just text
+            loading_embed = discord.Embed(
+                title="League Statistics Loading...",
+                description="Please wait while we gather player statistics",
+                color=0xFFA500  # Orange color for loading state
             )
+            loading_embed.set_footer(text="This may take a few moments")
+            
+            # Send the loading embed
+            await ctx.interaction.response.send_message(embed=loading_embed, ephemeral=True)
+            
+            # Fetch and process the data
             players = self.db.get_all_players()
-            players = sorted(players, key=lambda p: -len(p.get_matches()))
+            
+            match_counts_cache = {}
+            for p in players:
+                match_counts_cache[p.discord_id] = len(p.get_matches())
+            
+            players = sorted(players, key=lambda p: -match_counts_cache.get(p.discord_id, 0))
 
-            embed = StatisticsGeneralEmbed(players)
-            view = StatisticsGeneralView(players)
+            # Create and display the actual data with the match_counts_cache
+            embed = StatisticsGeneralEmbed(players, match_counts_cache)
+            view = StatisticsGeneralView(players, match_counts_cache)
+            
             message = await ctx.interaction.original_response()
             await message.edit(embed=embed, view=view)
         except Exception as e:

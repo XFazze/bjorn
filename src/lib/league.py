@@ -663,16 +663,19 @@ class Database(general.Database):
 
 
 class StatisticsGeneralEmbed(Embed):
-    def __init__(self, players: list[Player]):
+    def __init__(self, players: list[Player], match_counts_cache=None):
         super().__init__(title=f"Players", color=0x00FF42)
 
+        # Use provided cache or create empty dict
+        match_counts_cache = match_counts_cache or {}
+        
         self.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
         self.add_field(
             name="Win rate", value="\n".join([f"{p.win_rate:.1f}%" for p in players])
         )
         self.add_field(
             name="Matches",
-            value="\n".join([f"{len(p.get_matches())}" for p in players]),
+            value="\n".join([f"{match_counts_cache.get(p.discord_id, 0)}" for p in players]),
         )
         self.set_footer(text="Normal")
 
@@ -691,21 +694,34 @@ class StatisticsGeneralExtEmbed(Embed):
 
 
 class StatisticsGeneralView(View):
-    def __init__(self, players: list[Player]):
+    def __init__(self, players: list[Player], match_counts_cache=None):
         super().__init__(timeout=7200)
         self.current_embed_index = 0
         self.current_sort_embed_index = 1
         self.current_embed = None
         self.players = players
+        
+        # Initialize the match counts cache if provided
+        self.match_counts_cache = match_counts_cache or {}
+        
         self.view_button = Button(label="Extended", style=ButtonStyle.blurple)
         self.view_button.callback = self._view_callback
         self.add_item(self.view_button)
+        
         self.sort_button = Button(label="Sort", style=ButtonStyle.blurple)
         self.sort_button.callback = self._sort_callback
         self.add_item(self.sort_button)
-
+    
     async def _view_callback(self, interaction: Interaction):
+        # Show loading animation
+        self.view_button.label = "Loading..."
+        self.view_button.disabled = True
         await interaction.response.defer()
+        
+        if not self.match_counts_cache:
+                for p in self.players:
+                    self.match_counts_cache[p.discord_id] = len(p.get_matches())
+        
         if self.current_embed_index == 0:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
             self.current_embed = StatisticsGeneralExtEmbed(self.players)
@@ -719,20 +735,36 @@ class StatisticsGeneralView(View):
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
             self.view_button.label = "Extended"
+        # Reset button state
+        self.view_button.disabled = False
+        
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
 
     async def _sort_callback(self, interaction: Interaction):
-        await interaction.response.defer()
+        # First update button to show loading state
+        self.sort_button.label = "Sorting..."
+        self.sort_button.disabled = True
+        await interaction.response.edit_message(view=self)
+        
+        # Precompute match counts if not already cached
+        if not self.match_counts_cache:
+                self.match_counts_cache = {}
+                for p in self.players:
+                    self.match_counts_cache[p.discord_id] = len(p.get_matches())
+        
+        # Use cached match counts for sorting
         normal_list = [
             sorted(self.players, key=lambda p: p.discord_name),
             sorted(self.players, key=lambda p: -p.win_rate),
-            sorted(self.players, key=lambda p: -len(p.get_matches())),
+            sorted(self.players, key=lambda p: -self.match_counts_cache.get(p.discord_id, 0)),
         ]
         extended_list = [
             sorted(self.players, key=lambda p: -p.mmr),
             sorted(self.players, key=lambda p: p.discord_name),
         ]
+        
+        # Handle different sort states
         if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
             self.sort_button.label = "MMR"
             self.players = extended_list[0]
@@ -748,22 +780,25 @@ class StatisticsGeneralView(View):
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 1:
             self.sort_button.label = "Name"
             self.players = normal_list[0]
-            self.current_embed = StatisticsGeneralEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
             self.current_embed_index = 0
             self.current_sort_embed_index = 2
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 2:
             self.sort_button.label = "Winrate"
             self.players = normal_list[1]
-            self.current_embed = StatisticsGeneralEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
             self.current_embed_index = 0
             self.current_sort_embed_index = 3
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 3:
             self.sort_button.label = "Matches"
             self.players = normal_list[2]
-            self.current_embed = StatisticsGeneralEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
-
+        
+        # Reset button state but with the new label
+        self.sort_button.disabled = False
+        
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
 
@@ -1350,7 +1385,17 @@ class QueueControlView(View):
                 "Not enough players in queue", ephemeral=True
             )
             return
-
+        
+        # Update button to show loading state
+        for item in self.children:
+            if isinstance(item, Button) and item.callback == self._start_callback:
+                item.label = "Creating teams..."
+                item.disabled = True
+                break
+        
+        # Show the updated button immediately
+        await interaction.response.edit_message(view=self)
+        
         # Convert queue members to Players, handling both real and fake players
         queue_players = []
         for member in self.queue_view.queue:
@@ -1362,7 +1407,7 @@ class QueueControlView(View):
                 queue_players.append(Player(self.bot, member.id, False))
 
         team1, team2 = generate_teams(queue_players)
-        await interaction.response.defer()
+        
         await start_match(
             team1,
             team2,
@@ -1373,7 +1418,14 @@ class QueueControlView(View):
             interaction,
             move_players_setting=self.move_players,
         )
-        await self.queue_message.delete()
+        # Reset the button after generating teams
+        for item in self.children:
+            if isinstance(item, Button) and item.callback == self._start_callback:
+                item.label = "Start match"
+                item.disabled = False
+                break
+        # Update the UI with reset button
+        await interaction.edit_original_response(view=self)
 
     async def _discard_callback(self, interaction: Interaction):
         if interaction.user != self.creator:
