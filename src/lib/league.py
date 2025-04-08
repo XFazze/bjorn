@@ -383,16 +383,19 @@ class Database(general.Database):
 
 
 class StatisticsGeneralEmbed(Embed):
-    def __init__(self, players: list[Player]):
+    def __init__(self, players: list[Player], match_counts_cache=None):
         super().__init__(title=f"Players", color=0x00FF42)
 
+        # Use provided cache or create empty dict
+        match_counts_cache = match_counts_cache or {}
+        
         self.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
         self.add_field(
             name="Win rate", value="\n".join([f"{p.win_rate:.1f}%" for p in players])
         )
         self.add_field(
             name="Matches",
-            value="\n".join([f"{len(p.get_matches())}" for p in players]),
+            value="\n".join([f"{match_counts_cache.get(p.discord_id, 0)}" for p in players]),
         )
         self.set_footer(text="Normal")
 
@@ -413,22 +416,34 @@ class StatisticsGeneralExtEmbed(Embed):
 
 
 class StatisticsGeneralView(View):
-    def __init__(self, players: list[Player]):
+    def __init__(self, players: list[Player], match_counts_cache=None):
         super().__init__(timeout=7200)
-
         self.current_embed_index = 0
         self.current_sort_embed_index = 1
         self.current_embed = None
         self.players = players
+        
+        # Initialize the match counts cache if provided
+        self.match_counts_cache = match_counts_cache or {}
+        
         self.view_button = Button(label="Extended", style=ButtonStyle.blurple)
         self.view_button.callback = self._view_callback
         self.add_item(self.view_button)
+        
         self.sort_button = Button(label="Sort", style=ButtonStyle.blurple)
         self.sort_button.callback = self._sort_callback
         self.add_item(self.sort_button)
-
+    
     async def _view_callback(self, interaction: Interaction):
+        # Show loading animation
+        self.view_button.label = "Loading..."
+        self.view_button.disabled = True
         await interaction.response.defer()
+        
+        if not self.match_counts_cache:
+                for p in self.players:
+                    self.match_counts_cache[p.discord_id] = len(p.get_matches())
+        
         if self.current_embed_index == 0:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
             self.current_embed = StatisticsGeneralExtEmbed(self.players)
@@ -436,27 +451,30 @@ class StatisticsGeneralView(View):
             self.current_sort_embed_index = 0
             self.view_button.label = "Normal"
             self.sort_button.label = "Name"
-
         else:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
             self.current_embed = StatisticsGeneralEmbed(self.players)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
             self.view_button.label = "Extended"
+        # Reset button state
+        self.view_button.disabled = False
+        
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
+
 
     async def _sort_callback(self, interaction: Interaction):
         # First update button to show loading state
         self.sort_button.label = "Sorting..."
         self.sort_button.disabled = True
-        await interaction.response.defer()
+        await interaction.response.edit_message(view=self)
         
         # Precompute match counts if not already cached
-        if not hasattr(self, 'match_counts_cache') or not self.match_counts_cache:
-            self.match_counts_cache = {}
-            for p in self.players:
-                self.match_counts_cache[p.discord_id] = len(p.get_matches())
+        if not self.match_counts_cache:
+                self.match_counts_cache = {}
+                for p in self.players:
+                    self.match_counts_cache[p.discord_id] = len(p.get_matches())
         
         # Use cached match counts for sorting
         normal_list = [
@@ -468,6 +486,7 @@ class StatisticsGeneralView(View):
             sorted(self.players, key=lambda p: -p.mmr),
             sorted(self.players, key=lambda p: p.discord_name),
         ]
+        
         # Handle different sort states
         if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
             self.sort_button.label = "MMR"
@@ -475,35 +494,31 @@ class StatisticsGeneralView(View):
             self.current_embed = StatisticsGeneralExtEmbed(self.players)
             self.current_embed_index = 1
             self.current_sort_embed_index = 1
-
         elif self.current_embed_index == 1 and self.current_sort_embed_index == 1:
             self.sort_button.label = "Name"
             self.players = extended_list[1]
             self.current_embed = StatisticsGeneralExtEmbed(self.players)
             self.current_embed_index = 1
             self.current_sort_embed_index = 0
-
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 1:
             self.sort_button.label = "Name"
             self.players = normal_list[0]
-            self.current_embed = StatisticsGeneralEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
             self.current_embed_index = 0
             self.current_sort_embed_index = 2
-
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 2:
             self.sort_button.label = "Winrate"
             self.players = normal_list[1]
-            self.current_embed = StatisticsGeneralEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
             self.current_embed_index = 0
             self.current_sort_embed_index = 3
-
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 3:
             self.sort_button.label = "Matches"
             self.players = normal_list[2]
-            self.current_embed = StatisticsGeneralEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
-            
+        
         # Reset button state but with the new label
         self.sort_button.disabled = False
         
