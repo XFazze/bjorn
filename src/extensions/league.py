@@ -147,7 +147,8 @@ class league_cog(commands.Cog):
                 await message.edit(embed=updated_embed, view=view)
                 logger.info(f"Transferred {len(existing_players)} players from old queue to new queue")
 
-            view = QueueControlView(self.bot, message, view, voice=voice)
+            # Pass the creator parameter explicitly
+            view = QueueControlView(self.bot, message, view, voice=voice, creator=ctx.author)
             await ctx.interaction.followup.send(
                 "Queue control", view=view, ephemeral=True
             )
