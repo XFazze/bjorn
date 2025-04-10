@@ -76,6 +76,34 @@ class league_cog(commands.Cog):
                 )
                 return
 
+            # Look for existing queue in last 50 messages
+            existing_queue_message = None
+            existing_players = []
+            
+            async for message in ctx.channel.history(limit=50):
+                if message.author == self.bot.user and message.embeds:
+                    for embed in message.embeds:
+                        if embed.title and embed.title.startswith("Queue "):
+                            existing_queue_message = message
+                            
+                            # Extract players from the existing queue
+                            if len(embed.fields) > 0 and embed.fields[0].name == "Players":
+                                player_names = embed.fields[0].value.split("\n")
+                                for name in player_names:
+                                    if name and name != "No players in queue":
+                                        clean_name = name.replace(" [BOT]", "")
+                                        member = discord.utils.get(ctx.guild.members, name=clean_name)
+                                        if member:
+                                            existing_players.append(member)
+                                        else:
+                                            fake_player = self._create_fake_queue_member(clean_name)
+                                            if fake_player:
+                                                existing_players.append(fake_player)
+                            break
+                    
+                    if existing_queue_message:
+                        break
+            
             vc_members_names = [
                 member.name for member in ctx.author.voice.channel.members
             ]
@@ -87,7 +115,36 @@ class league_cog(commands.Cog):
             embed = QueueEmbed([], vc_members_names, ctx.author)
             voice = ctx.author.voice.channel
             view = QueueView(self.bot, voice)
+            
+            # Add existing players to the new queue
+            for player in existing_players:
+                view.queue.append(player)
+            
             message = await ctx.reply(embed=embed, view=view)
+            
+            # Delete old queue message if one was found
+            if existing_queue_message:
+                try:
+                    await existing_queue_message.delete()
+                    logger.info(f"Deleted old queue message in {ctx.guild.name}")
+                except Exception as e:
+                    logger.error(f"Error deleting old queue message: {e}")
+            
+            # Update the embed to show the transferred players
+            if existing_players:
+                queue_players = []
+                for member in view.queue:
+                    if hasattr(member, "is_fake") and hasattr(member, "_player"):
+                        queue_players.append(member._player)
+                    else:
+                        try:
+                            queue_players.append(Player(self.bot, member.id))
+                        except:
+                            continue
+                
+                updated_embed = QueueEmbed(queue_players, vc_members_names, ctx.author)
+                await message.edit(embed=updated_embed, view=view)
+                logger.info(f"Transferred {len(existing_players)} players from old queue to new queue")
 
             view = QueueControlView(self.bot, message, view, voice=voice)
             await ctx.interaction.followup.send(
