@@ -69,7 +69,8 @@ class league_cog(commands.Cog):
                     embed=discord.Embed(
                         title="You must be in a voice channel to use this command!",
                         color=0xFF0000,
-                    )
+                    ),
+                    ephemeral=True  # Make the message visible only to the command user
                 )
                 logger.debug(
                     f"User {ctx.author.name} tried to use queue without being in a voice channel"
