@@ -998,7 +998,7 @@ class QueueControlView(View):
             style=ButtonStyle.secondary,
             row=1,
         )
-        move_players_button.callback = self._move_players_callback
+        move_players_button.callback = self._toggle_move_players
         self.add_item(move_players_button)
 
         update_remove_list_button = Button(
