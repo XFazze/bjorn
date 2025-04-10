@@ -192,7 +192,8 @@ class league_cog(commands.Cog):
                     embed=discord.Embed(
                         title="You must be in a voice channel to use this command!",
                         color=0xFF0000,
-                    )
+                    ),
+                    emphemeral=True,
                 )
                 return
 
