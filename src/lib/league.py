@@ -969,6 +969,7 @@ class QueueControlView(View):
         queue_message: Message,
         queue_view: QueueView,
         voice: VoiceChannel | None = None,
+        creator: Member | None = None,
     ):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot)
