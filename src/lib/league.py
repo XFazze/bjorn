@@ -3,6 +3,7 @@ import datetime
 import random
 import discord
 import logging
+import asyncio
 from discord import (
     ButtonStyle,
     Interaction,
@@ -122,24 +123,40 @@ class Player:
         bot: commands.Bot,
         discord_id: int = None,
         discord_name: str = None,
+        queue_type: str = "summoners_rift",
     ):
         self.db = Database(bot)
         self.bot = bot
         self.user_exists = False  # If the user has not been deleted
         self.discord_name = "Unknown Player"  # Default fallback name
+        self.queue_type = queue_type
         # Check if it's a fake player
         if discord_id and discord_id < 0:
             fake_player = self.db.cursor.execute(
-                f"SELECT discord_id, mmr, wins, losses, discord_name FROM fake_player WHERE discord_id = {discord_id}"
+                f"SELECT discord_id, sr_mmr, sr_wins, sr_losses, aram_mmr, aram_wins, aram_losses, discord_name FROM fake_player WHERE discord_id = {discord_id}"
             ).fetchone()
 
             if fake_player:
                 self.discord_id = discord_id
-                self.mmr = math.ceil(fake_player[1])
-                self.wins = fake_player[2]
-                self.losses = fake_player[3]
-                self.discord_name = fake_player[4]
+                self.sr_mmr = math.ceil(fake_player[1])
+                self.sr_wins = fake_player[2]
+                self.sr_losses = fake_player[3]
+                self.aram_mmr = math.ceil(fake_player[4]) if fake_player[4] else 1000
+                self.aram_wins = fake_player[5] if fake_player[5] else 0
+                self.aram_losses = fake_player[6] if fake_player[6] else 0
+                self.discord_name = fake_player[7]
                 self.is_fake = True
+
+                # Set the active stats based on queue type
+                if queue_type == "summoners_rift":
+                    self.mmr = self.sr_mmr
+                    self.wins = self.sr_wins
+                    self.losses = self.sr_losses
+                else:  # aram
+                    self.mmr = self.aram_mmr
+                    self.wins = self.aram_wins
+                    self.losses = self.aram_losses
+
                 self.win_rate = (
                     self.wins / (self.wins + self.losses) * 100
                     if self.wins + self.losses > 0
@@ -171,20 +188,43 @@ class Player:
                 (m for m in self.bot.get_all_members() if m.name == discord_name), None
             )
             if discord_member_object is None:
-                raise Exception(f"No user with discord name{discord_name}")
+                # Improved error message that properly separates the discord_name from any additional info
+                raise Exception(f"No user with discord name: {discord_name}")
 
             discord_id = discord_member_object.id
             self.discord_name = discord_name
 
         existing_player = self.db.cursor.execute(
-            f"SELECT discord_id, mmr, wins, losses FROM player WHERE discord_id = {discord_id}"
+            f"SELECT discord_id, sr_mmr, sr_wins, sr_losses, aram_mmr, aram_wins, aram_losses FROM player WHERE discord_id = {discord_id}"
         ).fetchone()
 
         self.discord_id = discord_id
 
-        self.mmr = math.ceil(existing_player[1]) if existing_player else 1000
-        self.wins = existing_player[2] if existing_player else 0
-        self.losses = existing_player[3] if existing_player else 0
+        if existing_player:
+            self.sr_mmr = math.ceil(existing_player[1]) if existing_player[1] else 1000
+            self.sr_wins = existing_player[2] if existing_player[2] else 0
+            self.sr_losses = existing_player[3] if existing_player[3] else 0
+            self.aram_mmr = math.ceil(existing_player[4]) if existing_player[4] else 1000
+            self.aram_wins = existing_player[5] if existing_player[5] else 0
+            self.aram_losses = existing_player[6] if existing_player[6] else 0
+        else:
+            self.sr_mmr = 1000
+            self.sr_wins = 0
+            self.sr_losses = 0
+            self.aram_mmr = 1000
+            self.aram_wins = 0
+            self.aram_losses = 0
+
+        # Set the active stats based on queue type
+        if queue_type == "summoners_rift":
+            self.mmr = self.sr_mmr
+            self.wins = self.sr_wins
+            self.losses = self.sr_losses
+        else:  # aram
+            self.mmr = self.aram_mmr
+            self.wins = self.aram_wins
+            self.losses = self.aram_losses
+
         self.win_rate = (
             self.wins / (self.wins + self.losses) * 100
             if self.wins + self.losses > 0
@@ -195,41 +235,70 @@ class Player:
             self.db.insert_player(self)
 
     def set_mmr(self, mmr):
-        self.db.cursor.execute(
-            f"UPDATE player SET mmr = {mmr} WHERE discord_id = {self.discord_id}"
-        )
+        if self.queue_type == "summoners_rift":
+            self.db.cursor.execute(
+                f"UPDATE player SET sr_mmr = {mmr} WHERE discord_id = {self.discord_id}"
+            )
+            self.sr_mmr = mmr
+        else:  # aram
+            self.db.cursor.execute(
+                f"UPDATE player SET aram_mmr = {mmr} WHERE discord_id = {self.discord_id}"
+            )
+            self.aram_mmr = mmr
         self.db.connection.commit()
         self.mmr = mmr
 
     def update(self):
         if hasattr(self, "is_fake") and self.is_fake:
             # Update fake player
-            self.db.cursor.execute(
-                f"UPDATE fake_player SET mmr = {self.mmr}, wins = {self.wins}, losses = {self.losses} WHERE discord_id = {self.discord_id}"
-            )
+            if self.queue_type == "summoners_rift":
+                self.db.cursor.execute(
+                    f"UPDATE fake_player SET sr_mmr = {self.sr_mmr}, sr_wins = {self.sr_wins}, sr_losses = {self.sr_losses} WHERE discord_id = {self.discord_id}"
+                )
+            else:  # aram
+                self.db.cursor.execute(
+                    f"UPDATE fake_player SET aram_mmr = {self.aram_mmr}, aram_wins = {self.aram_wins}, aram_losses = {self.aram_losses} WHERE discord_id = {self.discord_id}"
+                )
             self.db.connection.commit()
 
             # Also update MMR history
             insertion = (
-                f"INSERT INTO mmr_history (discord_id, mmr, timestamp) VALUES (?, ?, ?)"
+                f"INSERT INTO mmr_history (discord_id, mmr, timestamp, queue_type) VALUES (?, ?, ?, ?)"
             )
             self.db.cursor.execute(
-                insertion, (self.discord_id, self.mmr, datetime.datetime.now())
+                insertion,
+                (
+                    self.discord_id,
+                    self.mmr,
+                    datetime.datetime.now(),
+                    self.queue_type,
+                ),
             )
             self.db.connection.commit()
             return
 
         # Original implementation for real players
-        self.db.cursor.execute(
-            f"UPDATE player SET mmr = {self.mmr}, wins = {self.wins}, losses = {self.losses} WHERE discord_id = {self.discord_id}"
-        )
+        if self.queue_type == "summoners_rift":
+            self.db.cursor.execute(
+                f"UPDATE player SET sr_mmr = {self.sr_mmr}, sr_wins = {self.sr_wins}, sr_losses = {self.sr_losses} WHERE discord_id = {self.discord_id}"
+            )
+        else:  # aram
+            self.db.cursor.execute(
+                f"UPDATE player SET aram_mmr = {self.aram_mmr}, aram_wins = {self.aram_wins}, aram_losses = {self.aram_losses} WHERE discord_id = {self.discord_id}"
+            )
         self.db.connection.commit()
 
         insertion = (
-            f"INSERT INTO mmr_history (discord_id, mmr, timestamp) VALUES (?, ?, ?)"
+            f"INSERT INTO mmr_history (discord_id, mmr, timestamp, queue_type) VALUES (?, ?, ?, ?)"
         )
         self.db.cursor.execute(
-            insertion, (self.discord_id, self.mmr, datetime.datetime.now())
+            insertion,
+            (
+                self.discord_id,
+                self.mmr,
+                datetime.datetime.now(),
+                self.queue_type,
+            ),
         )
         self.db.connection.commit()
 
@@ -302,6 +371,7 @@ class Match:
         mmr_diff: int,
         timestamp: datetime.datetime,
         is_fake: bool = False,
+        queue_type: str = "summoners_rift",
     ):
         self.match_id = match_id
         self.team1 = team1
@@ -310,6 +380,7 @@ class Match:
         self.mmr_diff = mmr_diff
         self.timestamp = timestamp
         self.is_fake = is_fake
+        self.queue_type = queue_type
 
 
 class Database(general.Database):
@@ -317,7 +388,16 @@ class Database(general.Database):
         super().__init__(os.environ["LEAGUE_DB_NAME"])
         self.create_tables(
             {
-                "player": ["discord_id", "mmr", "wins", "losses", "discord_name"],
+                "player": [
+                    "discord_id",
+                    "sr_mmr",
+                    "sr_wins",
+                    "sr_losses",
+                    "aram_mmr",
+                    "aram_wins",
+                    "aram_losses",
+                    "discord_name",
+                ],
                 "match": [
                     "match_id",
                     "team1",
@@ -326,7 +406,7 @@ class Database(general.Database):
                     "mmr_diff",
                     "timestamp",
                 ],
-                "mmr_history": ["discord_id", "mmr", "timestamp"],
+                "mmr_history": ["discord_id", "mmr", "timestamp", "queue_type"],
                 "guild_options": ["guild_id", "customs_channel"],
             }
         )
@@ -339,9 +419,12 @@ class Database(general.Database):
             fake_id INTEGER PRIMARY KEY AUTOINCREMENT,
             discord_id INTEGER UNIQUE,
             discord_name TEXT,
-            mmr INTEGER,
-            wins INTEGER,
-            losses INTEGER
+            sr_mmr INTEGER,
+            sr_wins INTEGER,
+            sr_losses INTEGER,
+            aram_mmr INTEGER,
+            aram_wins INTEGER,
+            aram_losses INTEGER
         )
         """
         )
@@ -406,8 +489,7 @@ class Database(general.Database):
                             for player_id in i[1].split()
                         ]
                         team2 = [
-                            Player(self.bot, int(player_id))
-                            for player_id in i[2].split()
+                            Player(self.bot, int(player_id)) for player_id in i[2].split()
                         ]
                         matches.append(
                             Match(i[0], team1, team2, i[3], i[4], i[5], is_fake=True)
@@ -424,7 +506,7 @@ class Database(general.Database):
         try:
             # Get real matches
             res = self.cursor.execute(
-                "SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM match"
+                "SELECT match_id, team1, team2, winner, mmr_diff, timestamp, queue_type FROM match"
             ).fetchall()
             matches = []
 
@@ -442,8 +524,10 @@ class Database(general.Database):
                             Player(self.bot, int(player_id))
                             for player_id in i[2].split()
                         ]
+                        # Use the queue_type from the database or default to summoners_rift if NULL
+                        queue_type = i[6] if len(i) > 6 and i[6] else "summoners_rift"
                         matches.append(
-                            Match(i[0], team1, team2, i[3], i[4], i[5], is_fake=False)
+                            Match(i[0], team1, team2, i[3], i[4], i[5], is_fake=False, queue_type=queue_type)
                         )
                 except Exception as e:
                     logger.error(
@@ -453,7 +537,7 @@ class Database(general.Database):
             # Get fake matches if requested or if discord_id is negative (fake player)
             if include_fake or discord_id < 0:
                 fake_res = self.cursor.execute(
-                    "SELECT match_id, team1, team2, winner, mmr_diff, timestamp FROM fake_match"
+                    "SELECT match_id, team1, team2, winner, mmr_diff, timestamp, queue_type FROM fake_match"
                 ).fetchall()
 
                 for i in fake_res:
@@ -470,9 +554,11 @@ class Database(general.Database):
                                 Player(self.bot, int(player_id))
                                 for player_id in i[2].split()
                             ]
+                            # Use the queue_type from the database or default to summoners_rift if NULL
+                            queue_type = i[6] if len(i) > 6 and i[6] else "summoners_rift"
                             matches.append(
                                 Match(
-                                    i[0], team1, team2, i[3], i[4], i[5], is_fake=True
+                                    i[0], team1, team2, i[3], i[4], i[5], is_fake=True, queue_type=queue_type
                                 )
                             )
                     except Exception as e:
@@ -523,7 +609,10 @@ class Database(general.Database):
                 f"Inserting match {match.match_id} into {table_name} table (is_fake: {is_fake})"
             )
 
-            insertion = f"INSERT INTO {table_name} (match_id, team1, team2, winner, mmr_diff, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+            # Get queue type from the first player (all players in a match will have the same queue type)
+            queue_type = match.team1[0].queue_type if match.team1 else "summoners_rift"
+
+            insertion = f"INSERT INTO {table_name} (match_id, team1, team2, winner, mmr_diff, timestamp, queue_type) VALUES (?, ?, ?, ?, ?, ?, ?)"
             self.cursor.execute(
                 insertion,
                 (
@@ -533,6 +622,7 @@ class Database(general.Database):
                     match.winner,
                     match.mmr_diff,
                     match.timestamp,
+                    queue_type,
                 ),
             )
             self.connection.commit()
@@ -545,12 +635,15 @@ class Database(general.Database):
     def insert_player(self, player: Player):
         try:
             self.cursor.execute(
-                "INSERT INTO player (discord_id, mmr, wins, losses, discord_name) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO player (discord_id, sr_mmr, sr_wins, sr_losses, aram_mmr, aram_wins, aram_losses, discord_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     player.discord_id,
-                    player.mmr,
-                    player.wins,
-                    player.losses,
+                    player.sr_mmr,
+                    player.sr_wins,
+                    player.sr_losses,
+                    player.aram_mmr,
+                    player.aram_wins,
+                    player.aram_losses,
                     player.discord_name,
                 ),
             )
@@ -594,7 +687,7 @@ class Database(general.Database):
                 )
 
     def add_fake_player(
-        self, name: str, mmr: int = 1000, wins: int = 0, losses: int = 0
+        self, name: str, sr_mmr: int = 1000, sr_wins: int = 0, sr_losses: int = 0, aram_mmr: int = 1000, aram_wins: int = 0, aram_losses: int = 0
     ):
         """Add a fake player to the database"""
         try:
@@ -607,8 +700,8 @@ class Database(general.Database):
                 fake_discord_id = -random.randint(100000, 999999)
 
             self.cursor.execute(
-                "INSERT INTO fake_player (discord_id, discord_name, mmr, wins, losses) VALUES (?, ?, ?, ?, ?)",
-                (fake_discord_id, name, mmr, wins, losses),
+                "INSERT INTO fake_player (discord_id, discord_name, sr_mmr, sr_wins, sr_losses, aram_mmr, aram_wins, aram_losses) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (fake_discord_id, name, sr_mmr, sr_wins, sr_losses, aram_mmr, aram_wins, aram_losses),
             )
             self.connection.commit()
             return fake_discord_id
@@ -663,8 +756,9 @@ class Database(general.Database):
 
 
 class StatisticsGeneralEmbed(Embed):
-    def __init__(self, players: list[Player], match_counts_cache=None):
-        super().__init__(title=f"Players", color=0x00FF42)
+    def __init__(self, players: list[Player], match_counts_cache=None, queue_type="summoners_rift"):
+        queue_type_str = "ARAM" if queue_type == "aram" else "Summoner's Rift"
+        super().__init__(title=f"Players - {queue_type_str}", color=0x00FF42)
 
         # Use provided cache or create empty dict
         match_counts_cache = match_counts_cache or {}
@@ -677,12 +771,13 @@ class StatisticsGeneralEmbed(Embed):
             name="Matches",
             value="\n".join([f"{match_counts_cache.get(p.discord_id, 0)}" for p in players]),
         )
-        self.set_footer(text="Normal")
+        self.set_footer(text=f"Normal | Queue Type: {queue_type_str}")
 
 
 class StatisticsGeneralExtEmbed(Embed):
-    def __init__(self, players: list[Player]):
-        super().__init__(title=f"Players", color=0x00FF42)
+    def __init__(self, players: list[Player], queue_type="summoners_rift"):
+        queue_type_str = "ARAM" if queue_type == "aram" else "Summoner's Rift"
+        super().__init__(title=f"Players - {queue_type_str}", color=0x00FF42)
 
         self.add_field(name="Name", value="\n".join([p.discord_name for p in players]))
         self.add_field(name="MMR", value="\n".join([f"{p.mmr}" for p in players]))
@@ -690,19 +785,24 @@ class StatisticsGeneralExtEmbed(Embed):
             name="Rank",
             value="\n".join([f"{p.get_rank()} | {p.get_lp()}%" for p in players]),
         )
-        self.set_footer(text="Extended")
+        self.set_footer(text=f"Extended | Queue Type: {queue_type_str}")
 
 
 class StatisticsGeneralView(View):
-    def __init__(self, players: list[Player], match_counts_cache=None):
+    def __init__(self, players: list[Player], match_counts_cache=None, aram_match_counts_cache=None):
         super().__init__(timeout=7200)
         self.current_embed_index = 0
         self.current_sort_embed_index = 1
         self.current_embed = None
         self.players = players
+        self.queue_type = "summoners_rift"  # Default to Summoner's Rift
         
-        # Initialize the match counts cache if provided
+        # Initialize the match counts caches if provided
         self.match_counts_cache = match_counts_cache or {}
+        self.aram_match_counts_cache = aram_match_counts_cache or {}
+        
+        # Create the initial embed with the appropriate match count cache
+        self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache, queue_type=self.queue_type)
         
         self.view_button = Button(label="Extended", style=ButtonStyle.blurple)
         self.view_button.callback = self._view_callback
@@ -711,6 +811,11 @@ class StatisticsGeneralView(View):
         self.sort_button = Button(label="Sort", style=ButtonStyle.blurple)
         self.sort_button.callback = self._sort_callback
         self.add_item(self.sort_button)
+        
+        # Add queue type toggle button
+        self.queue_button = Button(label="Toggle ARAM Stats", style=ButtonStyle.secondary, row=1)
+        self.queue_button.callback = self._toggle_queue_callback
+        self.add_item(self.queue_button)
     
     async def _view_callback(self, interaction: Interaction):
         # Show loading animation
@@ -724,14 +829,14 @@ class StatisticsGeneralView(View):
         
         if self.current_embed_index == 0:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
-            self.current_embed = StatisticsGeneralExtEmbed(self.players)
+            self.current_embed = StatisticsGeneralExtEmbed(self.players, queue_type=self.queue_type)
             self.current_embed_index = 1
             self.current_sort_embed_index = 0
             self.view_button.label = "Normal"
             self.sort_button.label = "Name"
         else:
             self.players = sorted(self.players, key=lambda p: p.discord_name)
-            self.current_embed = StatisticsGeneralEmbed(self.players)
+            self.current_embed = StatisticsGeneralEmbed(self.players, queue_type=self.queue_type)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
             self.view_button.label = "Extended"
@@ -747,17 +852,31 @@ class StatisticsGeneralView(View):
         self.sort_button.disabled = True
         await interaction.response.edit_message(view=self)
         
-        # Precompute match counts if not already cached
-        if not self.match_counts_cache:
+        # Determine the current match counts based on queue type
+        current_match_counts = self.aram_match_counts_cache if self.queue_type == "aram" else self.match_counts_cache
+        
+        # If we don't have match counts for the current queue type, load them
+        if not current_match_counts:
+            if self.queue_type == "aram":
+                self.aram_match_counts_cache = {}
+                for p in self.players:
+                    # Get matches with queue_type filter for ARAM
+                    aram_matches = [m for m in p.get_matches() if getattr(m, "queue_type", "summoners_rift") == "aram"]
+                    self.aram_match_counts_cache[p.discord_id] = len(aram_matches)
+                current_match_counts = self.aram_match_counts_cache
+            else:
                 self.match_counts_cache = {}
                 for p in self.players:
-                    self.match_counts_cache[p.discord_id] = len(p.get_matches())
+                    # Get matches with queue_type filter for SR
+                    sr_matches = [m for m in p.get_matches() if getattr(m, "queue_type", "summoners_rift") == "summoners_rift"]
+                    self.match_counts_cache[p.discord_id] = len(sr_matches)
+                current_match_counts = self.match_counts_cache
         
         # Use cached match counts for sorting
         normal_list = [
             sorted(self.players, key=lambda p: p.discord_name),
             sorted(self.players, key=lambda p: -p.win_rate),
-            sorted(self.players, key=lambda p: -self.match_counts_cache.get(p.discord_id, 0)),
+            sorted(self.players, key=lambda p: -current_match_counts.get(p.discord_id, 0)),
         ]
         extended_list = [
             sorted(self.players, key=lambda p: -p.mmr),
@@ -768,37 +887,105 @@ class StatisticsGeneralView(View):
         if self.current_embed_index == 1 and self.current_sort_embed_index == 0:
             self.sort_button.label = "MMR"
             self.players = extended_list[0]
-            self.current_embed = StatisticsGeneralExtEmbed(self.players)
+            self.current_embed = StatisticsGeneralExtEmbed(self.players, queue_type=self.queue_type)
             self.current_embed_index = 1
             self.current_sort_embed_index = 1
         elif self.current_embed_index == 1 and self.current_sort_embed_index == 1:
             self.sort_button.label = "Name"
             self.players = extended_list[1]
-            self.current_embed = StatisticsGeneralExtEmbed(self.players)
+            self.current_embed = StatisticsGeneralExtEmbed(self.players, queue_type=self.queue_type)
             self.current_embed_index = 1
             self.current_sort_embed_index = 0
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 1:
             self.sort_button.label = "Name"
             self.players = normal_list[0]
-            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
+            self.current_embed = StatisticsGeneralEmbed(self.players, current_match_counts, queue_type=self.queue_type)
             self.current_embed_index = 0
             self.current_sort_embed_index = 2
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 2:
             self.sort_button.label = "Winrate"
             self.players = normal_list[1]
-            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
+            self.current_embed = StatisticsGeneralEmbed(self.players, current_match_counts, queue_type=self.queue_type)
             self.current_embed_index = 0
             self.current_sort_embed_index = 3
         elif self.current_embed_index == 0 and self.current_sort_embed_index == 3:
             self.sort_button.label = "Matches"
             self.players = normal_list[2]
-            self.current_embed = StatisticsGeneralEmbed(self.players, self.match_counts_cache)
+            self.current_embed = StatisticsGeneralEmbed(self.players, current_match_counts, queue_type=self.queue_type)
             self.current_embed_index = 0
             self.current_sort_embed_index = 1
         
         # Reset button state but with the new label
         self.sort_button.disabled = False
         
+        message = await interaction.original_response()
+        await message.edit(embed=self.current_embed, view=self)
+    
+    async def _toggle_queue_callback(self, interaction: Interaction):
+        # Show loading state
+        self.queue_button.label = "Loading..."
+        self.queue_button.disabled = True
+        await interaction.response.defer()
+        
+        # Toggle between Summoner's Rift and ARAM stats
+        self.queue_type = "aram" if self.queue_type == "summoners_rift" else "summoners_rift"
+        
+        # Update players to use the correct queue type stats
+        for player in self.players:
+            # Update player's queue_type to match the current view
+            player.queue_type = self.queue_type
+            
+            # Reset MMR and win/loss stats to the right queue type values
+            if self.queue_type == "aram":
+                player.mmr = player.aram_mmr
+                player.wins = player.aram_wins
+                player.losses = player.aram_losses
+            else:  # summoners_rift
+                player.mmr = player.sr_mmr
+                player.wins = player.sr_wins
+                player.losses = player.sr_losses
+            
+            # Recalculate win rate
+            player.win_rate = (
+                player.wins / (player.wins + player.losses) * 100
+                if player.wins + player.losses > 0
+                else 0
+            )
+        
+        # Determine which match count cache to use based on queue type
+        current_match_counts = self.aram_match_counts_cache if self.queue_type == "aram" else self.match_counts_cache
+        
+        # If we don't have match counts for the current queue type, load them
+        if not current_match_counts:
+            if self.queue_type == "aram":
+                self.aram_match_counts_cache = {}
+                for p in self.players:
+                    # Get matches with queue_type filter for ARAM
+                    aram_matches = [m for m in p.get_matches() if getattr(m, "queue_type", "summoners_rift") == "aram"]
+                    self.aram_match_counts_cache[p.discord_id] = len(aram_matches)
+                current_match_counts = self.aram_match_counts_cache
+            else:
+                self.match_counts_cache = {}
+                for p in self.players:
+                    # Get matches with queue_type filter for SR
+                    sr_matches = [m for m in p.get_matches() if getattr(m, "queue_type", "summoners_rift") == "summoners_rift"]
+                    self.match_counts_cache[p.discord_id] = len(sr_matches)
+                current_match_counts = self.match_counts_cache
+        
+        # Reset the UI state
+        self.queue_button.label = "Toggle SR Stats" if self.queue_type == "aram" else "Toggle ARAM Stats"
+        self.queue_button.disabled = False
+        
+        # Sort players by name as default
+        self.players = sorted(self.players, key=lambda p: p.discord_name)
+        
+        # Create the appropriate embed (normal or extended) with the current queue type
+        if self.current_embed_index == 0:
+            self.current_embed = StatisticsGeneralEmbed(self.players, current_match_counts, queue_type=self.queue_type)
+        else:
+            self.current_embed = StatisticsGeneralExtEmbed(self.players, queue_type=self.queue_type)
+        
+        # Update the UI
         message = await interaction.original_response()
         await message.edit(embed=self.current_embed, view=self)
 
@@ -893,6 +1080,8 @@ class CustomMatch:
         self.mmr_diff, self.mmr_diff_scaled = self._calc_mmr_diff()
         self.timestamp = datetime.datetime.now()
         self.match_id = self._gen_match_id()
+        # Store the queue_type from the first team player (all players in a team should have same queue_type)
+        self.queue_type = getattr(team1[0], "queue_type", "summoners_rift") if team1 else "summoners_rift"
 
         # Improved detection of fake players - check if any player is a fake player
         # Check both for the is_fake attribute and for negative discord_ids
@@ -905,7 +1094,7 @@ class CustomMatch:
                 self.is_fake = True
                 break
 
-        logger.info(f"Created match {self.match_id} (is_fake: {self.is_fake})")
+        logger.info(f"Created match {self.match_id} (is_fake: {self.is_fake}, queue_type: {self.queue_type})")
 
     def _calc_mmr_diff(self) -> list[int, int]:
         mmr_diff = self.team1_mmr - self.team2_mmr
@@ -956,9 +1145,23 @@ class CustomMatch:
             ):
                 player.mmr += mmr_gains
                 player.wins += 1
+                # Update the specific MMR field based on queue type
+                if player.queue_type == "aram":
+                    player.aram_mmr = player.mmr
+                    player.aram_wins = player.wins
+                else:
+                    player.sr_mmr = player.mmr
+                    player.sr_wins = player.wins
             else:
                 player.mmr -= mmr_gains
                 player.losses += 1
+                # Update the specific MMR field based on queue type
+                if player.queue_type == "aram":
+                    player.aram_mmr = player.mmr
+                    player.aram_losses = player.losses
+                else:
+                    player.sr_mmr = player.mmr
+                    player.sr_losses = player.losses
             player.update()
 
         self.db.insert_match(
@@ -970,6 +1173,7 @@ class CustomMatch:
                 self.mmr_diff,
                 self.timestamp,
                 is_fake=self.is_fake,
+                queue_type=self.team1[0].queue_type if self.team1 else "summoners_rift"
             )
         )
         return mmr_gains
@@ -1095,7 +1299,12 @@ class MatchControlView(View):  # ändra till playersembed
         await interaction.response.defer()
         try:
             await self.remove_ingame_role(interaction)
+            # Delete the match message
             await self.match_message.delete()
+            
+            # Delete the control panel message as well
+            message = await interaction.original_response()
+            await message.delete()
         except Exception as e:
             logger.error(f"Error in discard callback: {e}")
             try:
@@ -1129,30 +1338,86 @@ class MatchViewDone(View):
         self.current_embed = None
         self.bot = bot
         self.match = match
+        self.keep_same_teams = False  # Default to generating new teams
 
-        rematch_button = Button(label="Rematch", style=ButtonStyle.blurple)
+        rematch_button = Button(label="Rematch", style=ButtonStyle.green)
         rematch_button.callback = self._rematch_callback
         self.add_item(rematch_button)
+        
+        # Toggle button for keeping same teams
+        toggle_teams_button = Button(
+            label="Same Teams: Off", 
+            style=ButtonStyle.secondary, 
+            row=1
+        )
+        toggle_teams_button.callback = self._toggle_teams_callback
+        self.add_item(toggle_teams_button)
 
     async def _rematch_callback(self, interaction: Interaction):
         await interaction.response.defer()
-        await start_match(
-            self.match.team1,
-            self.match.team2,
-            self.bot,
-            interaction.guild,
-            self.match.creator,
-            interaction.channel,
-            interaction,
-        )
+        
+        # Get the queue type from the match object's team1 first player
+        # Make sure to use queue_type from the match object, not just the player
+        queue_type = self.match.queue_type
+        
+        # If queue_type is not available in the match object, try to get it from first player
+        if not queue_type and self.match.team1:
+            queue_type = getattr(self.match.team1[0], "queue_type", "summoners_rift")
+        
+        if self.keep_same_teams:
+            # Use the exact same teams
+            await start_match(
+                self.match.team1,
+                self.match.team2,
+                self.bot,
+                interaction.guild,
+                self.match.creator,
+                interaction.channel,
+                interaction,
+                queue_type=queue_type
+            )
+        else:
+            # Combine all players from both teams
+            all_players = self.match.team1 + self.match.team2
+            
+            # Generate fresh teams
+            team1, team2 = generate_teams(all_players)
+            
+            # Start match with new teams, passing the queue_type
+            await start_match(
+                team1,
+                team2,
+                self.bot,
+                interaction.guild,
+                self.match.creator,
+                interaction.channel,
+                interaction,
+                queue_type=queue_type
+            )
+    
+    async def _toggle_teams_callback(self, interaction: Interaction):
+        self.keep_same_teams = not self.keep_same_teams
+        status = "On" if self.keep_same_teams else "Off"
+        style = ButtonStyle.primary if self.keep_same_teams else ButtonStyle.secondary
+        
+        # Update button label and style
+        for item in self.children:
+            if isinstance(item, Button) and item.callback == self._toggle_teams_callback:
+                item.label = f"Same Teams: {status}"
+                item.style = style
+                break
+                
+        await interaction.response.edit_message(view=self)
 
 
 class QueueEmbed(Embed):
     def __init__(
-        self, queue: list[Player], vc_members_names: list[str], creator: Member
+        self, queue: list[Player], vc_members_names: list[str], creator: Member, queue_type: str = "summoners_rift"
     ):
-        super().__init__(title=f"Queue {len(queue)}p", color=0x00FF42)
+        title_prefix = "ARAM" if queue_type == "aram" else "SR"
+        super().__init__(title=f"{title_prefix} Queue {len(queue)}p", color=0x00FF42)
         self.creator = creator
+        self.queue_type = queue_type
 
         # Format player names - highlight fake players with [BOT] tag
         players_formatted = []
@@ -1186,16 +1451,18 @@ class QueueEmbed(Embed):
                 else "No one in VC"
             ),
         )
-        self.set_footer(text=f"Creator: {creator.name}")
+        queue_type_str = "ARAM" if queue_type == "aram" else "Summoner's Rift"
+        self.set_footer(text=f"Creator: {creator.name} | Queue Type: {queue_type_str}")
 
 
 class QueueView(View):
-    def __init__(self, bot, voice_channel: VoiceChannel | None):
+    def __init__(self, bot, voice_channel: VoiceChannel | None, queue_type: str = "summoners_rift"):
         super().__init__(timeout=10800)  # I think 3 hours
         self.db = Database(bot)
         self.bot = bot
         self.voice_channel = voice_channel
         self.queue: list[Member] = []
+        self.queue_type = queue_type
 
         join_queue_button = Button(label="Join Queue", style=ButtonStyle.green)
         join_queue_button.callback = self._join_queue_callback
@@ -1212,15 +1479,19 @@ class QueueView(View):
             else []
         )
 
-        # Convert queue member list to Player objects
+        # Extract the creator name from the footer text
+        footer_text = interaction.message.embeds[0].footer.text
+        creator_name = footer_text.split('|')[0].replace('Creator:', '').strip()
+
+        # Convert queue member list to Player objects with proper queue_type
         queue_players = []
         for member in self.queue:
             if hasattr(member, "is_fake") and hasattr(member, "_player"):
                 # For fake players, use the stored Player object
                 queue_players.append(member._player)
             else:
-                # For real players, create a new Player object
-                queue_players.append(Player(self.bot, member.id, False))
+                # For real players, create a new Player object with the correct queue_type
+                queue_players.append(Player(self.bot, member.id, queue_type=self.queue_type))
 
         await interaction.message.edit(
             embed=QueueEmbed(
@@ -1228,8 +1499,9 @@ class QueueView(View):
                 vc_members_names,
                 Player(
                     self.bot,
-                    discord_name=interaction.message.embeds[0].footer.text[9:],
+                    discord_name=creator_name,
                 ).get_discord_object(),
+                queue_type=self.queue_type,
             ),
         )
 
@@ -1279,22 +1551,41 @@ class RemovePlayerFromQueueSelect(Select):
             vc_members_names = [m.name for m in self.voice.members]
         else:
             vc_members_names = []
+            
+        # Extract just the creator name and queue_type from footer text
+        footer_text = self.queue_message.embeds[0].footer.text
+        creator_name = footer_text.split('|')[0].replace('Creator:', '').strip()
+        queue_type = "aram" if "ARAM" in footer_text else "summoners_rift"
+        
+        # Create Player objects with proper queue type
+        queue_players = []
+        for member in self.queue_view.queue:
+            if hasattr(member, "is_fake") and hasattr(member, "_player"):
+                queue_players.append(member._player)
+            else:
+                try:
+                    queue_players.append(Player(self.bot, member.id, queue_type=queue_type))
+                except:
+                    continue
+        
+        creator = Player(self.bot, discord_name=creator_name).get_discord_object()
+        
         await self.queue_message.edit(
             embed=QueueEmbed(
-                [Player(self.bot, p.id, False) for p in self.queue_view.queue],
+                queue_players,
                 vc_members_names,
-                Player(
-                    self.bot,
-                    discord_name=self.queue_message.embeds[0].footer.text[9:],
-                ).get_discord_object(),
+                creator,
+                queue_type=queue_type
             )
         )
+        
         await interaction.response.edit_message(
             view=QueueControlView(
                 self.bot,
                 self.queue_message,
                 self.queue_view,
                 voice=self.voice,
+                creator=creator,
             )
         )
 
@@ -1341,6 +1632,15 @@ class QueueControlView(View):
         )
         move_players_button.callback = self._toggle_move_players
         self.add_item(move_players_button)
+        
+        # Add a clear queue button
+        clear_queue_button = Button(
+            label="Clear Queue",
+            style=ButtonStyle.danger,
+            row=1,
+        )
+        clear_queue_button.callback = self._clear_queue_callback
+        self.add_item(clear_queue_button)
         
         update_remove_list_button = Button(
             label="Update remove list",
@@ -1396,6 +1696,10 @@ class QueueControlView(View):
         # Show the updated button immediately
         await interaction.response.edit_message(view=self)
         
+        # Extract queue type from the footer text
+        footer_text = self.queue_message.embeds[0].footer.text
+        queue_type = "aram" if "ARAM" in footer_text else "summoners_rift"
+        
         # Convert queue members to Players, handling both real and fake players
         queue_players = []
         for member in self.queue_view.queue:
@@ -1403,8 +1707,8 @@ class QueueControlView(View):
                 # For fake players, use the stored Player object
                 queue_players.append(member._player)
             else:
-                # For real players, create a new Player object
-                queue_players.append(Player(self.bot, member.id, False))
+                # For real players, create a new Player object with the correct queue_type
+                queue_players.append(Player(self.bot, member.id, queue_type=queue_type))
 
         team1, team2 = generate_teams(queue_players)
         
@@ -1417,6 +1721,7 @@ class QueueControlView(View):
             interaction.channel,
             interaction,
             move_players_setting=self.move_players,
+            queue_type=queue_type
         )
         # Reset the button after generating teams
         for item in self.children:
@@ -1436,6 +1741,47 @@ class QueueControlView(View):
         await interaction.response.defer()
         await self.queue_message.delete()
 
+    async def _clear_queue_callback(self, interaction: Interaction):
+        if interaction.user != self.creator:
+            await interaction.response.send_message(
+                "You are not authorized to use this button.", ephemeral=True
+            )
+            return
+        await interaction.response.defer()
+        
+        # Clear the queue
+        self.queue_view.queue.clear()
+        
+        # Get current voice channel members if available
+        vc_members_names = (
+            [m.name for m in self.voice.members] if self.voice else []
+        )
+        
+        # Extract creator name and queue type from footer
+        footer_text = self.queue_message.embeds[0].footer.text
+        creator_name = footer_text.split('|')[0].replace('Creator:', '').strip()
+        queue_type = "aram" if "ARAM" in footer_text else "summoners_rift"
+        
+        # Get creator discord object
+        creator = Player(self.bot, discord_name=creator_name).get_discord_object()
+        
+        # Update the queue message with empty player list
+        await self.queue_message.edit(
+            embed=QueueEmbed([], vc_members_names, creator, queue_type=queue_type)
+        )
+        
+        # Create a new control view with updated (empty) select menu
+        new_view = QueueControlView(
+            self.bot,
+            self.queue_message,
+            self.queue_view,
+            voice=self.voice,
+            creator=self.creator,
+        )
+        
+        # Update the control panel with the new view
+        await interaction.edit_original_response(view=new_view)
+
     async def _update_remove_list_callback(self, interaction: Interaction):
         if interaction.user != self.creator:
             await interaction.response.send_message(
@@ -1443,15 +1789,18 @@ class QueueControlView(View):
             )
             return
         await interaction.response.defer()
-        await self.queue_message.edit(
-            view=QueueControlView(
-                self.bot,
-                self.queue_message,
-                self.queue_view,
-                voice=self.voice,
-                creator=self.creator,
-            )
+        
+        # Create new options for the remove player select
+        new_view = QueueControlView(
+            self.bot,
+            self.queue_message,
+            self.queue_view,
+            voice=self.voice,
+            creator=self.creator,
         )
+        
+        # Only update the interaction response, not the queue message itself
+        await interaction.edit_original_response(view=new_view)
 
 
 async def start_match(
@@ -1463,7 +1812,46 @@ async def start_match(
     channel: TextChannel,
     interaction: Interaction,
     move_players_setting=False,
+    queue_type="summoners_rift",
 ):
+    # First, clean up old match controls and winner messages, but only for the same queue type
+    try:
+        async for message in channel.history(limit=50):
+            if message.author == bot.user:
+                # Check if it's a match control message
+                if message.content == "Match Control":
+                    # Need to check the associated match message to determine the queue type
+                    # Search for a match message that was posted right before this control message
+                    async for potential_match_message in channel.history(limit=5, before=message):
+                        if (potential_match_message.author == bot.user and 
+                            potential_match_message.embeds and 
+                            potential_match_message.embeds[0].title):
+                            
+                            # Check for match queue type
+                            match_type = "aram" if "ARAM" in potential_match_message.embeds[0].footer.text else "summoners_rift"
+                            
+                            # Only delete if it's the same queue type
+                            if match_type == queue_type:
+                                await message.delete()
+                                logger.info(f"Deleted old {queue_type} match control message")
+                            break
+                    
+                # Check if it's a match result message (with "Winner:" in the title)
+                elif message.embeds and message.embeds[0].title and "Winner:" in message.embeds[0].title:
+                    # Determine if this is from the same queue type
+                    match_type = "aram" if "ARAM" in message.embeds[0].footer.text else "summoners_rift"
+                    
+                    # Only delete if it's the same queue type
+                    if match_type == queue_type:
+                        await message.delete()
+                        logger.info(f"Deleted old {queue_type} match result message")
+    except Exception as e:
+        logger.error(f"Error cleaning up old match messages: {e}")
+
+    # Ensure all players have the correct queue_type
+    for player in team1 + team2:
+        player.queue_type = queue_type
+    
     match = CustomMatch(bot, creator, team1, team2)
     config = ConfigDatabase(bot)
 
@@ -1472,9 +1860,8 @@ async def start_match(
     logger.info(ingame_role)
     if len(ingame_role) > 0:
         ingame_role = guild.get_role(ingame_role[0])
-        ingame_ping_message = await channel.send(f"<@&{ingame_role.id}>")
-
-        # Try to add the ingame role to each player
+        
+        # First add the ingame role to each player BEFORE sending the ping
         for player in team1 + team2:
             player_discord_object = player.get_discord_object()
             try:
@@ -1487,11 +1874,27 @@ async def start_match(
                 )
             except Exception as e:
                 logger.error(f"Error adding ingame role to player: {e}")
+        
+        # Now send the ping message after roles are assigned
+        ingame_ping_message = await channel.send(f"<@&{ingame_role.id}>")
+        
+        # Delete the ping message after delay
+        try:
+            await ingame_ping_message.delete()
+            # Since we're deleting the message, set it to None
+            ingame_ping_message = None
+        except Exception as e:
+            logger.error(f"Error deleting ingame ping message: {e}")
     else:
         ingame_ping_message = None
 
     # Send the match embed
     embed = MatchEmbed(team1, team2, creator)
+    
+    # Add queue type to the footer
+    queue_type_display = "ARAM" if queue_type == "aram" else "Summoner's Rift"
+    embed.set_footer(text=f"Creator: {creator.name} | Mode: {queue_type_display}")
+    
     match_message = await channel.send(embed=embed)
 
     # Create the match control view
@@ -1522,26 +1925,28 @@ async def start_match(
         except Exception as e:
             logger.error(f"Error moving players to voice channels: {e}")
 
-    # Generate draft links
-    draft_message = "League draft links \n Not showed when in dev"
-    try:
-        if os.environ["DEV"] != "True":
-            draftlolws = draftlol.DraftLolWebSocket()
-            draftlolws.run()
+    # Generate and send draft links ONLY for Summoner's Rift matches
+    if queue_type == "summoners_rift":
+        draft_message = "League draft links \n Not showed when in dev"
+        try:
+            if os.environ["DEV"] != "True":
+                draftlolws = draftlol.DraftLolWebSocket()
+                draftlolws.run()
 
-            retries = 0
-            while not draftlolws.closed and retries < 10:
-                time.sleep(0.5)
-                retries += 1
+                retries = 0
+                while not draftlolws.closed and retries < 10:
+                    time.sleep(0.5)
+                    retries += 1
 
-            draftlolws.force_close()
-            draft_message = draftlolws.message
-    except Exception as e:
-        logger.error(f"Error generating draft links: {e}")
-        draft_message += f"\nError: {str(e)}"
-
-    # Send the draft links
-    await channel.send(draft_message)
+                draftlolws.force_close()
+                draft_message = draftlolws.message
+                
+                # Send the draft links
+                await channel.send(draft_message)
+        except Exception as e:
+            logger.error(f"Error generating draft links: {e}")
+            await channel.send(f"League draft links \nError: {str(e)}")
+    
     return match_message
 
 

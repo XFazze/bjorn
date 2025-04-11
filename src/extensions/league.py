@@ -60,9 +60,115 @@ class league_cog(commands.Cog):
 
     @league.command(
         name="queue",
-        description="Creates a customs queue to automatically be placed in fair teams",
+        description="Creates a customs queue to be placed in fair teams"
     )
-    async def queue(self, ctx: commands.Context):
+    async def queue(self, ctx: commands.Context, queue_type: Literal["Summoner's Rift", "ARAM"] = "Summoner's Rift"):
+        try:
+            # Convert the queue_type to internal representation
+            internal_queue_type = "aram" if queue_type == "ARAM" else "summoners_rift"
+            
+            # Look for existing queue in last 50 messages
+            existing_queue_message = None
+            existing_players = []
+            
+            # Check for existing queue of the same type
+            queue_prefix = "ARAM" if queue_type == "ARAM" else "SR"
+            
+            async for message in ctx.channel.history(limit=50):
+                if message.author == self.bot.user and message.embeds:
+                    for embed in message.embeds:
+                        if embed.title and embed.title.startswith(f"{queue_prefix} Queue "):
+                            existing_queue_message = message
+                            
+                            # Extract players from the existing queue
+                            if len(embed.fields) > 0 and embed.fields[0].name == "Players":
+                                player_names = embed.fields[0].value.split("\n")
+                                for name in player_names:
+                                    if name and name != "No players in queue":
+                                        clean_name = name.replace(" [BOT]", "")
+                                        member = discord.utils.get(ctx.guild.members, name=clean_name)
+                                        if member:
+                                            existing_players.append(member)
+                                        else:
+                                            fake_player = self._create_fake_queue_member(clean_name)
+                                            if fake_player:
+                                                existing_players.append(fake_player)
+                            break
+                    
+                    if existing_queue_message:
+                        break
+            
+            # Get voice channel members if author is in a voice channel
+            vc_members_names = []
+            voice = None
+            if ctx.author.voice:
+                voice = ctx.author.voice.channel
+                vc_members_names = [member.name for member in voice.members]
+            
+            # Remove ingame role from all members
+            role = discord.utils.get(ctx.guild.roles, name="ingame")
+            if role:
+                for member in ctx.guild.members:
+                    if role in member.roles:
+                        await member.remove_roles(role)
+
+            # Create queue embed and view with the selected queue type
+            embed = QueueEmbed([], vc_members_names, ctx.author, queue_type=internal_queue_type)
+            view = QueueView(self.bot, voice, queue_type=internal_queue_type)
+            
+            # Add existing players to the new queue
+            for player in existing_players:
+                view.queue.append(player)
+            
+            message = await ctx.reply(embed=embed, view=view)
+            
+            # Delete old queue message if one was found
+            if existing_queue_message:
+                try:
+                    await existing_queue_message.delete()
+                    logger.info(f"Deleted old {queue_type} queue message in {ctx.guild.name}")
+                except Exception as e:
+                    logger.error(f"Error deleting old queue message: {e}")
+            
+            # Update the embed to show the transferred players
+            if existing_players:
+                queue_players = []
+                for member in view.queue:
+                    if hasattr(member, "is_fake") and hasattr(member, "_player"):
+                        queue_players.append(member._player)
+                    else:
+                        try:
+                            queue_players.append(Player(self.bot, member.id, queue_type=internal_queue_type))
+                        except:
+                            continue
+                
+                updated_embed = QueueEmbed(queue_players, vc_members_names, ctx.author, queue_type=internal_queue_type)
+                await message.edit(embed=updated_embed, view=view)
+                logger.info(f"Transferred {len(existing_players)} players from old queue to new queue")
+
+            # Pass the creator parameter explicitly
+            view = QueueControlView(self.bot, message, view, voice=voice, creator=ctx.author)
+            
+            queue_type_display = "ARAM" if queue_type == "ARAM" else "Summoner's Rift"
+            await ctx.interaction.followup.send(
+                f"{queue_type_display} Queue control", view=view, ephemeral=True
+            )
+            logger.info(f"{queue_type_display} Queue created by {ctx.author.name} in {ctx.guild.name}")
+        except Exception as e:
+            logger.error(f"Error creating queue: {str(e)}", exc_info=True)
+            await ctx.reply(
+                embed=discord.Embed(
+                    title=f"An error occurred while creating the {queue_type} queue.",
+                    description=str(e),
+                    color=0xFF0000,
+                )
+            )
+
+    @league.command(
+        name="aram_queue",
+        description="Creates an ARAM customs queue to automatically be placed in fair teams",
+    )
+    async def aram_queue(self, ctx: commands.Context):
         try:
             if not ctx.author.voice:
                 await ctx.reply(
@@ -73,7 +179,7 @@ class league_cog(commands.Cog):
                     ephemeral=True  # Make the message visible only to the command user
                 )
                 logger.debug(
-                    f"User {ctx.author.name} tried to use queue without being in a voice channel"
+                    f"User {ctx.author.name} tried to use aram_queue without being in a voice channel"
                 )
                 return
 
@@ -84,7 +190,7 @@ class league_cog(commands.Cog):
             async for message in ctx.channel.history(limit=50):
                 if message.author == self.bot.user and message.embeds:
                     for embed in message.embeds:
-                        if embed.title and embed.title.startswith("Queue "):
+                        if embed.title and embed.title.startswith("ARAM Queue "):
                             existing_queue_message = message
                             
                             # Extract players from the existing queue
@@ -113,9 +219,10 @@ class league_cog(commands.Cog):
                 if role in member.roles:
                     await member.remove_roles(role)
 
-            embed = QueueEmbed([], vc_members_names, ctx.author)
+            # Use queue_type="aram" for the QueueEmbed and QueueView
+            embed = QueueEmbed([], vc_members_names, ctx.author, queue_type="aram")
             voice = ctx.author.voice.channel
-            view = QueueView(self.bot, voice)
+            view = QueueView(self.bot, voice, queue_type="aram")
             
             # Add existing players to the new queue
             for player in existing_players:
@@ -127,9 +234,9 @@ class league_cog(commands.Cog):
             if existing_queue_message:
                 try:
                     await existing_queue_message.delete()
-                    logger.info(f"Deleted old queue message in {ctx.guild.name}")
+                    logger.info(f"Deleted old ARAM queue message in {ctx.guild.name}")
                 except Exception as e:
-                    logger.error(f"Error deleting old queue message: {e}")
+                    logger.error(f"Error deleting old ARAM queue message: {e}")
             
             # Update the embed to show the transferred players
             if existing_players:
@@ -139,25 +246,26 @@ class league_cog(commands.Cog):
                         queue_players.append(member._player)
                     else:
                         try:
-                            queue_players.append(Player(self.bot, member.id))
+                            # Use queue_type="aram" when creating Player objects
+                            queue_players.append(Player(self.bot, member.id, queue_type="aram"))
                         except:
                             continue
                 
-                updated_embed = QueueEmbed(queue_players, vc_members_names, ctx.author)
+                updated_embed = QueueEmbed(queue_players, vc_members_names, ctx.author, queue_type="aram")
                 await message.edit(embed=updated_embed, view=view)
-                logger.info(f"Transferred {len(existing_players)} players from old queue to new queue")
+                logger.info(f"Transferred {len(existing_players)} players from old ARAM queue to new ARAM queue")
 
             # Pass the creator parameter explicitly
             view = QueueControlView(self.bot, message, view, voice=voice, creator=ctx.author)
             await ctx.interaction.followup.send(
-                "Queue control", view=view, ephemeral=True
+                "ARAM Queue control", view=view, ephemeral=True
             )
-            logger.info(f"Queue created by {ctx.author.name} in {ctx.guild.name}")
+            logger.info(f"ARAM Queue created by {ctx.author.name} in {ctx.guild.name}")
         except Exception as e:
-            logger.error(f"Error creating queue: {str(e)}", exc_info=True)
+            logger.error(f"Error creating ARAM queue: {str(e)}", exc_info=True)
             await ctx.reply(
                 embed=discord.Embed(
-                    title="An error occurred while creating the queue.",
+                    title="An error occurred while creating the ARAM queue.",
                     description=str(e),
                     color=0xFF0000,
                 )
@@ -179,7 +287,9 @@ class league_cog(commands.Cog):
             async for message in ctx.channel.history(limit=50):
                 if message.author == self.bot.user and message.embeds:
                     for embed in message.embeds:
-                        if embed.title and embed.title.startswith("Queue "):
+                        if embed.title and (embed.title.startswith("SR Queue ") or 
+                                           embed.title.startswith("ARAM Queue ") or
+                                           embed.title.startswith("Queue ")):
                             queue_message = message
                             break
                     if queue_message:
@@ -205,6 +315,13 @@ class league_cog(commands.Cog):
                 return
 
             queue_embed = queue_message.embeds[0]
+            
+            # Determine queue type from the embed footer or title
+            queue_type = "summoners_rift"  # Default
+            if "ARAM" in queue_embed.title:
+                queue_type = "aram"
+            elif "Queue Type: ARAM" in queue_embed.footer.text:
+                queue_type = "aram"
 
             # Extract players from the embed
             player_names = []
@@ -263,12 +380,14 @@ class league_cog(commands.Cog):
                         (clean_name,),
                     ).fetchone()
                     if fake_player:
-                        queue_players.append(Player(self.bot, fake_player[1]))
+                        # Pass the queue_type when creating Player objects
+                        queue_players.append(Player(self.bot, fake_player[1], queue_type=queue_type))
                 else:
                     # This is a real player
                     member = discord.utils.get(ctx.guild.members, name=player_name)
                     if member:
-                        queue_players.append(Player(self.bot, member.id, False))
+                        # Pass the queue_type when creating Player objects
+                        queue_players.append(Player(self.bot, member.id, queue_type=queue_type))
 
             if len(queue_players) < 2:
                 if hasattr(ctx, "interaction") and ctx.interaction:
@@ -293,14 +412,13 @@ class league_cog(commands.Cog):
             team1, team2 = generate_teams(queue_players)
 
             # Get creator from the embed footer
-            creator_name = queue_embed.footer.text[9:]  # Remove "Creator: " prefix
+            creator_name = queue_embed.footer.text.split('|')[0].replace('Creator:', '').strip()
             creator = (
                 discord.utils.get(ctx.guild.members, name=creator_name) or ctx.author
             )
 
             # Create a fake interaction if needed
             if not hasattr(ctx, "interaction") or not ctx.interaction:
-
                 class FakeInteraction:
                     def __init__(self, author, guild, channel):
                         self.user = author
@@ -314,6 +432,7 @@ class league_cog(commands.Cog):
             else:
                 interaction = ctx.interaction
 
+            # Start the match with the correct queue type
             await start_match(
                 team1,
                 team2,
@@ -322,14 +441,16 @@ class league_cog(commands.Cog):
                 creator,  # Use the original queue creator
                 ctx.channel,
                 interaction,
+                queue_type=queue_type,
             )
 
             # Delete the queue message
             await queue_message.delete()
 
             # Send confirmation
+            queue_type_display = "ARAM" if queue_type == "aram" else "Summoner's Rift"
             success_embed = discord.Embed(
-                title="Match Started",
+                title=f"{queue_type_display} Match Started",
                 description=f"Admin {ctx.author.name} force-started a match with {len(queue_players)} players from the queue.",
                 color=0x00FF42,
             )
@@ -340,7 +461,7 @@ class league_cog(commands.Cog):
                 await ctx.send(embed=success_embed)
 
             logger.info(
-                f"Admin {ctx.author.name} force-started a match with {len(queue_players)} players"
+                f"Admin {ctx.author.name} force-started a {queue_type_display} match with {len(queue_players)} players"
             )
 
         except Exception as e:
@@ -568,15 +689,30 @@ class league_cog(commands.Cog):
             # Fetch and process the data
             players = self.db.get_all_players()
             
+            # Cache match counts for both SR and ARAM
             match_counts_cache = {}
-            for p in players:
-                match_counts_cache[p.discord_id] = len(p.get_matches())
+            aram_match_counts_cache = {}
             
+            for p in players:
+                # Cache SR match counts (only SR matches)
+                p.queue_type = "summoners_rift"  # Ensure we're using SR stats
+                sr_matches = [m for m in p.get_matches() if getattr(m, "queue_type", "summoners_rift") == "summoners_rift"]
+                match_counts_cache[p.discord_id] = len(sr_matches)
+                
+                # Cache ARAM match counts (only ARAM matches)
+                p.queue_type = "aram"  # Switch to ARAM stats
+                aram_matches = [m for m in p.get_matches() if getattr(m, "queue_type", "aram") == "aram"]
+                aram_match_counts_cache[p.discord_id] = len(aram_matches)
+                
+                # Reset to default SR for initial display
+                p.queue_type = "summoners_rift"
+            
+            # Sort players by SR match count for initial display
             players = sorted(players, key=lambda p: -match_counts_cache.get(p.discord_id, 0))
 
-            # Create and display the actual data with the match_counts_cache
+            # Create and display the actual data with the match counts caches
             embed = StatisticsGeneralEmbed(players, match_counts_cache)
-            view = StatisticsGeneralView(players, match_counts_cache)
+            view = StatisticsGeneralView(players, match_counts_cache, aram_match_counts_cache)
             
             message = await ctx.interaction.original_response()
             await message.edit(embed=embed, view=view)
@@ -1056,7 +1192,9 @@ class league_cog(commands.Cog):
             async for message in ctx.channel.history(limit=50):
                 if message.author == self.bot.user and message.embeds:
                     for embed in message.embeds:
-                        if embed.title and embed.title.startswith("Queue "):
+                        if embed.title and (embed.title.startswith("SR Queue ") or 
+                                          embed.title.startswith("ARAM Queue ") or
+                                          embed.title.startswith("Queue ")):
                             queue_message = message
                             break
 
@@ -1074,15 +1212,22 @@ class league_cog(commands.Cog):
                 return
 
             queue_embed = queue_message.embeds[0]
+            
+            # Determine queue type from the embed
+            queue_type = "summoners_rift"  # Default
+            if "ARAM" in queue_embed.title:
+                queue_type = "aram"
+            elif "Queue Type: ARAM" in queue_embed.footer.text:
+                queue_type = "aram"
 
-            creator_name = queue_embed.footer.text[9:]
+            creator_name = queue_embed.footer.text.split('|')[0].replace('Creator:', '').strip()
             creator = (
                 discord.utils.get(ctx.guild.members, name=creator_name) or ctx.author
             )
 
             voice_channel = ctx.author.voice.channel if ctx.author.voice else None
 
-            new_queue_view = QueueView(self.bot, voice_channel)
+            new_queue_view = QueueView(self.bot, voice_channel, queue_type=queue_type)
 
             existing_players = []
             if len(queue_embed.fields) > 0 and queue_embed.fields[0].name == "Players":
@@ -1099,29 +1244,25 @@ class league_cog(commands.Cog):
                                 new_queue_view.queue.append(fake_player)
 
             db = Database(self.bot)
-            fake_players = db.get_fake_players()
 
-            if not fake_players:
-                await ctx.reply(
-                    "No fake players found in the system. Create some first."
-                )
-                return
+            for _ in range(count):
+                fake_player = db.get_random_fake_player()
+                if not fake_player:
+                    await ctx.reply(
+                        "Could not find enough fake players to add to the queue. "
+                        "Use `/league fake generate` to create more fake players."
+                    )
+                    return
 
-            if len(fake_players) < count:
-                count = len(fake_players)
-
-            selected_players = random.sample(fake_players, count)
-            players = [Player(self.bot, player[1]) for player in selected_players]
-
-            added_players = []
-            for player in players:
+                player = Player(self.bot, fake_player[1], queue_type=queue_type)
                 fake_member = self._create_fake_queue_member(player)
-                if not any(
-                    getattr(p, "id", None) == fake_member.id
-                    for p in new_queue_view.queue
+
+                if any(
+                    getattr(p, "id", None) == fake_member.id for p in new_queue_view.queue
                 ):
-                    new_queue_view.queue.append(fake_member)
-                    added_players.append(player)
+                    continue
+
+                new_queue_view.queue.append(fake_member)
 
             vc_members_names = []
             if voice_channel:
@@ -1133,43 +1274,26 @@ class league_cog(commands.Cog):
                     queue_players.append(member._player)
                 else:
                     try:
-                        queue_players.append(Player(self.bot, member.id))
+                        queue_players.append(Player(self.bot, member.id, queue_type=queue_type))
                     except:
                         continue
 
-            updated_embed = QueueEmbed(queue_players, vc_members_names, creator)
+            updated_embed = QueueEmbed(queue_players, vc_members_names, creator, queue_type=queue_type)
             await queue_message.edit(embed=updated_embed, view=new_queue_view)
 
             control_view = QueueControlView(
                 self.bot, queue_message, new_queue_view, voice=voice_channel
             )
 
-            if added_players:
-                embed = discord.Embed(
-                    title="Fake Players Added to Queue",
-                    description=f"Added {len(added_players)} fake players to the queue",
-                    color=0x00FF42,
-                )
-
-                names_list = [player.discord_name for player in added_players]
-                mmr_list = [str(player.mmr) for player in added_players]
-
-                embed.add_field(name="Players", value="\n".join(names_list))
-                embed.add_field(name="MMR", value="\n".join(mmr_list))
-
-                result_message = await ctx.reply(embed=embed)
-
-                await ctx.interaction.followup.send(
-                    "Queue Control", view=control_view, ephemeral=True
-                )
-            else:
-                await ctx.reply("No new fake players were added to the queue.")
+            await ctx.interaction.followup.send(
+                "Queue Control", view=control_view, ephemeral=True
+            )
 
         except Exception as e:
-            logger.error(f"Error adding fake players to queue: {str(e)}", exc_info=True)
+            logger.error(f"Error adding multiple fake players to queue: {str(e)}", exc_info=True)
             await ctx.reply(
                 embed=discord.Embed(
-                    title="An error occurred while adding fake players to the queue",
+                    title="An error occurred while adding multiple fake players to the queue",
                     description=str(e),
                     color=0xFF0000,
                 )
@@ -1185,7 +1309,9 @@ class league_cog(commands.Cog):
             async for message in ctx.channel.history(limit=50):
                 if message.author == self.bot.user and message.embeds:
                     for embed in message.embeds:
-                        if embed.title and embed.title.startswith("Queue "):
+                        if embed.title and (embed.title.startswith("SR Queue ") or 
+                                          embed.title.startswith("ARAM Queue ") or
+                                          embed.title.startswith("Queue ")):
                             queue_message = message
                             break
 
@@ -1203,15 +1329,22 @@ class league_cog(commands.Cog):
                 return
 
             queue_embed = queue_message.embeds[0]
+            
+            # Determine queue type from the embed
+            queue_type = "summoners_rift"  # Default
+            if "ARAM" in queue_embed.title:
+                queue_type = "aram"
+            elif "Queue Type: ARAM" in queue_embed.footer.text:
+                queue_type = "aram"
 
-            creator_name = queue_embed.footer.text[9:]
+            creator_name = queue_embed.footer.text.split('|')[0].replace('Creator:', '').strip()
             creator = (
                 discord.utils.get(ctx.guild.members, name=creator_name) or ctx.author
             )
 
             voice_channel = ctx.author.voice.channel if ctx.author.voice else None
 
-            new_queue_view = QueueView(self.bot, voice_channel)
+            new_queue_view = QueueView(self.bot, voice_channel, queue_type=queue_type)
 
             if len(queue_embed.fields) > 0 and queue_embed.fields[0].name == "Players":
                 player_names = queue_embed.fields[0].value.split("\n")
@@ -1246,7 +1379,8 @@ class league_cog(commands.Cog):
                 )
                 return
 
-            player = Player(self.bot, fake_player[1])
+            # Create player with the correct queue type
+            player = Player(self.bot, fake_player[1], queue_type=queue_type)
 
             fake_member = self._create_fake_queue_member(player)
 
@@ -1270,11 +1404,11 @@ class league_cog(commands.Cog):
                     queue_players.append(member._player)
                 else:
                     try:
-                        queue_players.append(Player(self.bot, member.id))
+                        queue_players.append(Player(self.bot, member.id, queue_type=queue_type))
                     except:
                         continue
 
-            updated_embed = QueueEmbed(queue_players, vc_members_names, creator)
+            updated_embed = QueueEmbed(queue_players, vc_members_names, creator, queue_type=queue_type)
             await queue_message.edit(embed=updated_embed, view=new_queue_view)
 
             control_view = QueueControlView(
@@ -1309,250 +1443,6 @@ class league_cog(commands.Cog):
                 )
             )
 
-    @fake.command(name="set_rating", description="Change a fake player's MMR")
-    async def fake_set_rating(
-        self, ctx: commands.Context, player_identifier: str, mmr: int
-    ):
-        try:
-            db = Database(self.bot)
-
-            try:
-                player_id = int(player_identifier)
-                fake_player = db.cursor.execute(
-                    "SELECT * FROM fake_player WHERE discord_id = ?", (player_id,)
-                ).fetchone()
-            except ValueError:
-                fake_player = db.cursor.execute(
-                    "SELECT * FROM fake_player WHERE discord_name = ?",
-                    (player_identifier,),
-                ).fetchone()
-
-            if not fake_player:
-                await ctx.reply(
-                    f"Could not find fake player with ID or name '{player_identifier}'. "
-                    f"Use `/league fake list` to see available fake players."
-                )
-                return
-
-            player = Player(self.bot, fake_player[1])
-
-            original_mmr = player.mmr
-
-            player.mmr = mmr
-            player.update()
-
-            embed = discord.Embed(
-                title="Fake Player MMR Updated",
-                description=f"Updated '{player.discord_name}' MMR from {original_mmr} to {mmr}",
-                color=0x00FF42,
-            )
-
-            await ctx.reply(embed=embed)
-
-        except Exception as e:
-            logger.error(f"Error setting fake player rating: {str(e)}", exc_info=True)
-            await ctx.reply(
-                embed=discord.Embed(
-                    title="An error occurred while updating fake player MMR",
-                    description=str(e),
-                    color=0xFF0000,
-                )
-            )
-
-    @fake.command(name="match", description="Start a test match with fake players")
-    async def fake_match(self, ctx: commands.Context, players_per_team: int = 5):
-        try:
-            if hasattr(ctx, "interaction") and ctx.interaction:
-                await ctx.interaction.response.defer()
-                interaction_deferred = True
-            else:
-                interaction_deferred = False
-
-            if players_per_team < 1 or players_per_team > 5:
-                await ctx.reply("Players per team must be between 1 and 5.")
-                return
-
-            db = Database(self.bot)
-            fake_players = db.get_fake_players()
-
-            if len(fake_players) < players_per_team * 2:
-                await ctx.reply(
-                    f"Not enough fake players. Need at least {players_per_team * 2}."
-                )
-                return
-
-            selected_players = random.sample(fake_players, players_per_team * 2)
-
-            team1_players = [
-                Player(self.bot, player[1])
-                for player in selected_players[:players_per_team]
-            ]
-            team2_players = [
-                Player(self.bot, player[1])
-                for player in selected_players[players_per_team:]
-            ]
-
-            status_message = await ctx.reply(
-                embed=discord.Embed(
-                    title="Starting Test Match...",
-                    description=f"Creating a match with {players_per_team} players per team",
-                    color=0x00FF42,
-                )
-            )
-
-            if not hasattr(ctx, "interaction") or not ctx.interaction:
-
-                class FakeInteraction:
-                    def __init__(self, author, guild, channel):
-                        self.user = author
-                        self.guild = guild
-                        self.channel = channel
-
-                    async def followup_send(self, *args, **kwargs):
-                        return await self.channel.send(*args, **kwargs)
-
-                interaction = FakeInteraction(ctx.author, ctx.guild, ctx.channel)
-            else:
-                interaction = ctx.interaction
-
-            await start_match(
-                team1_players,
-                team2_players,
-                self.bot,
-                ctx.guild,
-                ctx.author,
-                ctx.channel,
-                interaction,
-                move_players_setting=False,
-            )
-
-            await status_message.edit(
-                embed=discord.Embed(
-                    title="Test Match Started",
-                    description=f"Started a test match with {players_per_team} players per team",
-                    color=0x00FF42,
-                )
-            )
-
-        except Exception as e:
-            logger.error(f"Error in fake_match command: {str(e)}", exc_info=True)
-            await ctx.reply(
-                embed=discord.Embed(
-                    title="An error occurred while creating a test match",
-                    description=str(e),
-                    color=0xFF0000,
-                )
-            )
-
-    @fake.command(name="matches", description="List fake player matches")
-    async def fake_matches(self, ctx: commands.Context):
-        try:
-            await ctx.interaction.response.send_message(
-                "Fake matches loading", ephemeral=True
-            )
-
-            matches = self.db.get_fake_matches()
-
-            logger.info(f"Found {len(matches)} fake matches in the fake_match table")
-
-            if not matches:
-                await ctx.interaction.followup.send(
-                    embed=discord.Embed(
-                        title="No fake matches found",
-                        description="There are no test matches in the database.",
-                        color=0xFF0000,
-                    )
-                )
-                return
-
-            embeds = []
-            for i, match in enumerate(matches):
-                embed = discord.Embed(
-                    title=f"Fake Match {match.match_id}\t({i+1}/{len(matches)})",
-                    description="*This is a test match with fake players*",
-                    color=0xFFAA00,
-                )
-
-                embed.add_field(
-                    name=f"Team 1 (Total MMR: {sum(p.mmr for p in match.team1)})",
-                    value="\n".join(
-                        [f"{p.discord_name} ({p.mmr} MMR)" for p in match.team1]
-                    ),
-                )
-                embed.add_field(name=f"MMR Diff: {math.ceil(match.mmr_diff)}", value="")
-                embed.add_field(
-                    name=f"Team 2 (Total MMR: {sum(p.mmr for p in match.team2)})",
-                    value="\n".join(
-                        [f"{p.discord_name} ({p.mmr} MMR)" for p in match.team2]
-                    ),
-                )
-                embed.add_field(
-                    name=f"Date", value=f"{str(match.timestamp)[:19]}", inline=False
-                )
-                embed.add_field(name=f"Result", value=f"Team {match.winner} Won")
-                embeds.append(embed)
-
-            if embeds:
-                view = PlayerMatchesView(embeds)
-                message = await ctx.interaction.original_response()
-                await message.edit(embed=embeds[0], view=view)
-            else:
-                await ctx.interaction.followup.send(
-                    embed=discord.Embed(
-                        title="No fake matches found",
-                        description="There are no test matches in the database.",
-                        color=0xFF0000,
-                    )
-                )
-
-        except Exception as e:
-            logger.error(f"Error listing fake matches: {str(e)}", exc_info=True)
-            await ctx.reply(
-                embed=discord.Embed(
-                    title="An error occurred while listing fake matches",
-                    description=str(e),
-                    color=0xFF0000,
-                )
-            )
-
-    def _create_fake_queue_member(self, player):
-        bot = self.bot
-
-        class FakeQueueMember:
-            def __init__(self, player_obj=None, player_name=None):
-                if player_obj:
-                    self.id = player_obj.discord_id
-                    self.name = f"{player_obj.discord_name} [BOT]"
-                    self.display_name = f"{player_obj.discord_name} [BOT]"
-                    self._player = player_obj
-                elif player_name:
-                    db = Database(bot)
-                    fake_player = db.cursor.execute(
-                        "SELECT * FROM fake_player WHERE discord_name = ?",
-                        (player_name,),
-                    ).fetchone()
-                    if fake_player:
-                        player_obj = Player(bot, fake_player[1])
-                        self.id = player_obj.discord_id
-                        self.name = f"{player_name} [BOT]"
-                        self.display_name = f"{player_name} [BOT]"
-                        self._player = player_obj
-                    else:
-                        self.id = -999999
-                        self.name = f"{player_name} [BOT]"
-                        self.display_name = f"{player_name} [BOT]"
-                self.is_fake = True
-
-            def __eq__(self, other):
-                if hasattr(other, "id"):
-                    return self.id == other.id
-                return False
-
-        if isinstance(player, str):
-            return FakeQueueMember(player_name=player)
-        else:
-            return FakeQueueMember(player_obj=player)
-
     @league.command(
         name="admin_add_player",
         description="Add a specific player to an existing queue (Admin only)",
@@ -1565,7 +1455,9 @@ class league_cog(commands.Cog):
             async for message in ctx.channel.history(limit=50):
                 if message.author == self.bot.user and message.embeds:
                     for embed in message.embeds:
-                        if embed.title and embed.title.startswith("Queue "):
+                        if embed.title and (embed.title.startswith("SR Queue ") or 
+                                          embed.title.startswith("ARAM Queue ") or
+                                          embed.title.startswith("Queue ")):
                             queue_message = message
                             break
 
@@ -1583,15 +1475,22 @@ class league_cog(commands.Cog):
                 return
 
             queue_embed = queue_message.embeds[0]
+            
+            # Determine queue type from the embed
+            queue_type = "summoners_rift"  # Default
+            if "ARAM" in queue_embed.title:
+                queue_type = "aram"
+            elif "Queue Type: ARAM" in queue_embed.footer.text:
+                queue_type = "aram"
 
-            creator_name = queue_embed.footer.text[9:]
+            creator_name = queue_embed.footer.text.split('|')[0].replace('Creator:', '').strip()
             creator = (
                 discord.utils.get(ctx.guild.members, name=creator_name) or ctx.author
             )
 
             voice_channel = ctx.author.voice.channel if ctx.author.voice else None
 
-            new_queue_view = QueueView(self.bot, voice_channel)
+            new_queue_view = QueueView(self.bot, voice_channel, queue_type=queue_type)
 
             # Load existing players from the queue
             if len(queue_embed.fields) > 0 and queue_embed.fields[0].name == "Players":
@@ -1626,11 +1525,11 @@ class league_cog(commands.Cog):
                     queue_players.append(member._player)
                 else:
                     try:
-                        queue_players.append(Player(self.bot, member.id))
+                        queue_players.append(Player(self.bot, member.id, queue_type=queue_type))
                     except:
                         continue
 
-            updated_embed = QueueEmbed(queue_players, vc_members_names, creator)
+            updated_embed = QueueEmbed(queue_players, vc_members_names, creator, queue_type=queue_type)
             await queue_message.edit(embed=updated_embed, view=new_queue_view)
 
             control_view = QueueControlView(
@@ -1638,7 +1537,7 @@ class league_cog(commands.Cog):
             )
 
             # Display success message
-            player_obj = Player(self.bot, player.id)
+            player_obj = Player(self.bot, player.id, queue_type=queue_type)
             embed = discord.Embed(
                 title="Player Added to Queue",
                 description=f"Added '{player.name}' to the queue",
